@@ -1,0 +1,163 @@
+---
+id: quick-start
+title: Quick Start
+sidebar_position: 3
+hide_title: true
+---
+
+## Quick Start
+
+```mdx-code-block
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import CodeBlock from '@theme/CodeBlock';
+```
+
+Get up and running with Swarmdriver in under 5 minutes.
+
+### 1. Install Swarmdriver
+
+<Tabs
+  groupId="pkg-manager"
+  defaultValue="npm"
+  values={[
+    { label: "npm", value: "npm" },
+    { label: "yarn", value: "yarn" },
+  ]}>
+  <TabItem value="npm">
+
+```bash
+npm install --save-dev swarmdriver webdriverio appium
+```
+
+  </TabItem>
+  <TabItem value="yarn">
+
+```bash
+yarn add -D swarmdriver webdriverio appium
+```
+
+  </TabItem>
+</Tabs>
+
+### 2. Create Your Configuration
+
+Create `wdio.conf.js`:
+
+```javascript
+import { buildWdioConfig } from 'swarmdriver'
+
+const config = buildWdioConfig({
+  envs: process.env,
+  remote: process.env.WDIO_REMOTE || 'local',
+  scope: process.env.WDIO_SCOPE || 'browser',
+  metal: process.env.WDIO_METAL || 'desktop',
+  framework: 'jasmine',
+})
+
+export default config
+```
+
+### 3. Create a Test Spec
+
+Create `test/example.spec.js`:
+
+```javascript
+describe('Example Test', () => {
+  it('should open Google and verify title', async () => {
+    await browser.url('https://www.google.com')
+    
+    const title = await browser.getTitle()
+    expect(title).toContain('Google')
+  })
+
+  it('should search for swarmdriver', async () => {
+    const searchBox = await $('input[name="q"]')
+    await searchBox.setValue('swarmdriver')
+    await searchBox.keys(['Enter'])
+    
+    await browser.waitUntil(async () => {
+      const results = await $$('a[href*="github.com"]')
+      return results.length > 0
+    })
+
+    const results = await $$('a[href*="github.com"]')
+    expect(results.length).toBeGreaterThan(0)
+  })
+})
+```
+
+### 4. Run Your Tests
+
+```bash
+# Desktop browser (Chrome by default, locally)
+wdio run wdio.conf.js
+
+# Mobile device browser
+WDIO_METAL=device wdio run wdio.conf.js
+
+# Cloud testing with Sauce Labs
+WDIO_REMOTE=saucelabs wdio run wdio.conf.js
+
+# Configure log level
+SWARMDRIVER_LOG_LEVEL=debug wdio run wdio.conf.js
+```
+
+### 5. (Optional) Use Page Objects
+
+For larger test suites, organize your selectors with the Page Object Pattern:
+
+Create `test/pages/login.page.js`:
+
+```javascript
+class LoginPage {
+  get emailField() {
+    return $('input[type="email"]')
+  }
+
+  get passwordField() {
+    return $('input[type="password"]')
+  }
+
+  get submitButton() {
+    return $('button[type="submit"]')
+  }
+
+  async login(email, password) {
+    await this.emailField.setValue(email)
+    await this.passwordField.setValue(password)
+    await this.submitButton.click()
+  }
+
+  async open(url) {
+    await browser.url(url)
+  }
+}
+
+export default new LoginPage()
+```
+
+Then use it in your tests:
+
+```javascript
+import LoginPage from '../pages/login.page.js'
+
+describe('Login Flow', () => {
+  it('should log in with valid credentials', async () => {
+    await LoginPage.open('https://app.example.com/login')
+    await LoginPage.login('user@example.com', 'password')
+    
+    await browser.waitUntil(async () => {
+      const url = await browser.getUrl()
+      return url.includes('/dashboard')
+    })
+  })
+})
+```
+
+## What's Next?
+
+- Learn about [environment variable configuration](./usage)
+- Explore [API documentation](./api)
+- Set up [Sauce Labs cloud testing](https://saucelabs.com)
+- Review [WebdriverIO best practices](https://webdriver.io/docs/gettingstarted)

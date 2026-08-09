@@ -1,0 +1,47 @@
+#!/bin/bash
+# Sauce Connect Proxy CLI Quick Reference Guide:
+# https://wiki.saucelabs.com/display/DOCS/Sauce+Connect+Proxy+Command-Line+Quick+Reference+Guide
+
+if [ -z "${SAUCE_USERNAME}" ] || [ -z "${SAUCE_ACCESS_KEY}" ]; then
+  echo "This script can't run without your Sauce credentials"
+  echo "Please set SAUCE_USERNAME and SAUCE_ACCESS_KEY env variables"
+  echo "export SAUCE_USERNAME=ur-username"
+  echo "export SAUCE_ACCESS_KEY=ur-access-key"
+  exit 1
+fi
+
+SC_PREFIX=doppio
+SC_READYFILE=/tmp/sauce-connect-ready-$RANDOM
+# SC_READYFILE=/tmp/sauce-connect-ready
+
+# if [ ! -z "${CODEBUILD_BUILD_NUMBER}" ]; then
+#   SC_TUNNEL_ID="-i ${CODEBUILD_BUILD_NUMBER}"
+# fi
+
+if [ ! -z "${SAUCE_TUNNEL_ID}" ]; then
+  SC_TUNNEL_ID="${SAUCE_TUNNEL_ID}"
+else
+  SC_TUNNEL_ID="${SC_PREFIX}-$(git rev-parse --short HEAD)"
+fi
+
+# SC_TMP_DIR="$(mktemp -d -t sc.XXXX)"
+# echo "Using temp dir $SC_TMP_DIR"
+# pushd $SC_TMP_DIR
+
+echo "Starting Sauce Connect"
+sc \
+  --user $SAUCE_USERNAME \
+  --api-key $SAUCE_ACCESS_KEY \
+  --tunnel-name $SC_TUNNEL_ID \
+  --readyfile ${SC_READYFILE} &
+
+echo "Waiting for Sauce Connect readyfile"
+while [ ! -f ${SC_READYFILE} ]; do
+  sleep .5
+done
+
+unset SC_TMP_DIR SC_READYFILE SC_TUNNEL_ID
+
+# popd
+
+# killall sc  # wait for Sauce Connect to close the tunnel

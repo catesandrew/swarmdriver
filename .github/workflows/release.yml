@@ -1,0 +1,53 @@
+name: Release
+
+# Manual trigger only: npm org scope + NPM_TOKEN have not been decided/configured
+# yet, so this workflow must not auto-publish on every push to main. Once a
+# scope is chosen and NPM_TOKEN is added as a repo secret, this can be
+# switched to `on: push: branches: [main]` for the standard Changesets flow
+# (see https://github.com/changesets/action#with-publishing).
+on:
+  workflow_dispatch:
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Create release pull request or publish
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          # TODO: uncomment once the npm org/scope is confirmed and NPM_TOKEN
+          # is configured as a repository secret. Until then, changesets/action
+          # will only open/update the "Version Packages" PR and will NOT
+          # publish to npm (no publish command is wired below).
+          # publish: npm publish
+          version: npx changeset version
+          commit: "chore: version packages"
+          title: "chore: version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

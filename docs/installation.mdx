@@ -1,0 +1,100 @@
+---
+id: installation
+title: Installation
+sidebar_position: 2
+---
+
+```mdx-code-block
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import CodeBlock from '@theme/CodeBlock';
+```
+
+## Installation
+
+You can install `swarmdriver` using your favorite package manager:
+
+<Tabs
+  groupId="pkg-manager"
+  defaultValue="npm"
+  values={[
+    { label: "npm", value: "npm" },
+    { label: "yarn", value: "yarn" },
+    { label: "bun", value: "bun" },
+  ]}>
+  <TabItem value="npm">
+
+```shell
+npm install --save-dev swarmdriver
+```
+
+  </TabItem>
+  <TabItem value="yarn">
+
+```shell
+yarn add -D swarmdriver
+```
+
+  </TabItem>
+  <TabItem value="bun">
+
+```shell
+bun add --dev swarmdriver
+```
+
+  </TabItem>
+
+</Tabs>
+
+## Dependencies
+
+Swarmdriver requires the following peer dependencies to be installed:
+
+- **WebdriverIO 9.x** — The core test framework
+- **Appium 2.x** — For native mobile app automation
+- **Node.js 16+** — The runtime
+
+If you plan to run tests locally on mobile devices, you'll also need:
+
+- **Appium** — Can be installed locally or run as a service
+- **Chromedriver** — For Android Chrome browser testing
+- **Simulator/Emulator runtimes** — For iOS/Android emulation
+
+For cloud testing with Sauce Labs:
+
+- No additional setup required — just set `WDIO_REMOTE=saucelabs` and provide credentials
+
+## Quick Setup
+
+After installation, create a `wdio.conf.js` in your project root:
+
+```javascript
+import { buildWdioConfig } from 'swarmdriver'
+
+// Build your config from the matrix
+const config = buildWdioConfig({
+  envs: process.env,
+  remote: process.env.WDIO_REMOTE || 'local',
+  scope: process.env.WDIO_SCOPE || 'browser',
+  metal: process.env.WDIO_METAL || 'desktop',
+  framework: 'jasmine',
+})
+
+export default config
+```
+
+Then run tests with:
+
+```bash
+# Local desktop browser testing (default)
+wdio
+
+# Local mobile device browser testing
+WDIO_METAL=device wdio
+
+# Local native app testing
+WDIO_SCOPE=app wdio
+
+# Cloud (Sauce Labs) testing
+WDIO_REMOTE=saucelabs wdio
+```

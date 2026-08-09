@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.build.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "emitDeclarationOnly": false,
+    "declaration": false
+  },
+  "include": ["src/**/*.js", "scripts/**/*.js", "*.config.js"]
+}

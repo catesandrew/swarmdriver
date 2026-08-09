@@ -1,0 +1,214 @@
+# Android
+
+## Environment Variables
+
+Here's a list of the supported environment variables when testing with appium
+
+- ADB_EXEC_TIMEOUT
+- ADB_PORT
+- ALLOW_DELAY_ADB
+- ALLOW_TEST_PACKAGES
+- ANDROID_APP
+- ANDROID_AUTOMATION_NAME
+- ANDROID_BROWSER_NAME
+- ANDROID_DEVICE_NAME
+- ANDROID_FULL_RESET
+- ANDROID_INSTALL_TIMEOUT
+- ANDROID_LANGUAGE
+- ANDROID_LOCALE
+- ANDROID_LOCALE_SCRIPT
+- ANDROID_NEW_COMMAND_TIMEOUT
+- ANDROID_NO_RESET
+- ANDROID_ORIENTATION
+- ANDROID_PLATFORM_NAME
+- ANDROID_PLATFORM_VERSION
+- ANDROID_UDID
+- APP_ACTIVITY
+- APP_PACKAGE
+- APP_WAIT_ACTIVITY
+- APP_WAIT_DURATION
+- APP_WAIT_FOR_LAUNCH
+- APP_WAIT_PACKAGE
+- AUTO_GRANT_PERMISSIONS
+- AUTO_LAUNCH
+- AUTO_WEBVIEW
+- AUTO_WEBVIEW_TIMEOUT
+- AVD
+- AVD_ARGS
+- AVD_ENV
+- AVD_LAUNCH_TIMEOUT
+- AVD_READY_TIMEOUT
+- CHROMEDRIVER_ARGS
+- CHROMEDRIVER_CHROME_MAPPING_FILE
+- CHROMEDRIVER_DISABLE_BUILD_CHECK
+- CHROMEDRIVER_EXECUTABLE
+- CHROMEDRIVER_EXECUTABLE_DIR
+- CHROMEDRIVER_PORT
+- CHROMEDRIVER_PORTS
+- CHROMEDRIVER_USE_SYSTEM_EXECUTABLE
+- CHROME_OPTIONS
+- CLEAR_DEVICE_LOGS_ON_START
+- DISABLE_SUPPRESS_ACCESSIBILITY_SERVICE
+- DISABLE_WINDOW_ANIMATION
+- DONT_STOP_APP_ON_RESET
+- ENABLE_WEBVIEW_DETAILS_COLLECTION
+- ENFORCE_APP_INSTALL
+- ENSURE_WEBVIEWS_HAVE_PAGES
+- EXTRACT_CHROME_ANDROID_PACKAGE_FROM_CONTEXT_NAME
+- GPS_ENABLED
+- IGNORE_HIDDEN_API_POLICY_ERROR
+- INTENT_ACTION
+- INTENT_CATEGORY
+- INTENT_FLAGS
+- IS_HEADLESS
+- KEYSTORE_PASSWORD
+- KEYSTORE_PATH
+- KEY_ALIAS
+- KEY_PASSWORD
+- LOGCAT_FILTER_SPECS
+- LOGCAT_FORMAT
+- MJPEG_SCREENSHOT_URL
+- MJPEG_SERVER_PORT
+- MOCK_LOCATION_APP
+- NATIVE_WEB_SCREENSHOT
+- NETWORK_SPEED
+- NO_SIGN
+- OPTIONAL_INTENT_ARGUMENTS
+- OTHER_APPS
+- PAGE_LOAD_STRATEGY
+- PRINT_PAGE_SOURCE_ON_FIND_FAILURE
+- RECREATE_CHROME_DRIVER_SESSIONS
+- REMOTE_ADB_HOST
+- REMOTE_APPS_CACHE_LIMIT
+- SHOW_CHROMEDRIVER_LOG
+- SKIP_DEVICE_INITIALIZATION
+- SKIP_LOGCAT_CAPTURE
+- SKIP_LOG_CAPTURE
+- SKIP_SERVER_INSTALLATION
+- SKIP_UNLOCK
+- SUPPRESS_KILL_SERVER
+- SYSTEM_PORT
+- UIAUTOMATOR2_SERVER_INSTALL_TIMEOUT
+- UIAUTOMATOR2_SERVER_LAUNCH_TIMEOUT
+- UIAUTOMATOR2_SERVER_READ_TIMEOUT
+- UNINSTALL_OTHER_PACKAGES
+- UNLOCK_KEY
+- UNLOCK_SUCCESS_TIMEOUT
+- UNLOCK_TYPE
+- USER_PROFILE
+- USE_KEYSTORE
+- WEBVIEW_DEVTOOLS_PORT
+
+## Real Devices
+
+Here's a list of the real devices for use with testing on saucelabs
+
+- Google Pixel
+- Google Pixel 2
+- Google Pixel 2 XL
+- Google Pixel 3
+- Google Pixel 3 - Android 12 Beta
+- Google Pixel 3 XL
+- Google Pixel 3a
+- Google Pixel 3a XL
+- Google Pixel 4
+- Google Pixel 4 XL
+- Google Pixel 4 XL - Android 12 Beta 2.1
+- Google Pixel 4a
+- Google Pixel 5
+- Google Pixel 5 - Android 12 Beta
+- Google Pixel XL
+- Huawei Honor 5X
+- Huawei Honor 8
+- Huawei Honor 9
+- Huawei Honor 9 Lite
+- Huawei Mate 10 Pro
+- Huawei Mate 20 Pro
+- Huawei Mate 9
+- Huawei P10
+- Huawei P20
+- Huawei P20 Pro
+- Huawei P30
+- Huawei P30 Lite
+- Huawei P30 Pro
+- Huawei P9
+- LG G6
+- LG G7 Thinq
+- LG G8 ThinQ
+- LG K10
+- LG K30
+- LG Phoenix 2
+- LG Q Stylo 4
+- LG Q6
+- LG Stylo 6
+- LG V20
+- LG V30
+- LG V30+ Thinq
+- LG V40
+- Moto Z2 Force
+- Motorola Moto G5 Plus
+- Motorola Moto G6
+- Motorola Moto G6 Plus
+- Motorola Moto G7
+- Motorola Moto X
+- Motorola Moto X (2nd gen)
+- Motorola Moto X Play
+- Motorola Moto Z
+- Motorola Moto Z Play
+- Motorola Nexus 6
+- Motorola One Vision
+- Samsung Galaxy A10
+- Samsung Galaxy A10e
+- Samsung Galaxy A20e
+- Samsung Galaxy A3 2017
+- Samsung Galaxy A30
+- Samsung Galaxy A31
+- Samsung Galaxy A5
+- Samsung Galaxy A5 (2017)
+- Samsung Galaxy A50
+- Samsung Galaxy A6 2018
+- Samsung Galaxy A8 2018
+- Samsung Galaxy A80
+- Samsung Galaxy A9 2018
+- Samsung Galaxy Fold 5G
+- Samsung Galaxy J7 2016
+- Samsung Galaxy M20
+- Samsung Galaxy Note 10
+- Samsung Galaxy Note 10+
+- Samsung Galaxy Note 20 5G
+- Samsung Galaxy Note 20 Ultra 5G
+- Samsung Galaxy Note 4
+- Samsung Galaxy Note 5
+- Samsung Galaxy Note 8
+- Samsung Galaxy Note 9
+- Samsung Galaxy Note Edge
+- Samsung Galaxy S10
+- Samsung Galaxy S10+
+- Samsung Galaxy S10e
+- Samsung Galaxy S20
+- Samsung Galaxy S20 Plus
+- Samsung Galaxy S20 Ultra
+- Samsung Galaxy S21 5G
+- Samsung Galaxy S21 Plus 5G
+- Samsung Galaxy S21 Ultra 5G
+- Samsung Galaxy S5
+- Samsung Galaxy S6
+- Samsung Galaxy S6 Edge
+- Samsung Galaxy S6 Edge+
+- Samsung Galaxy S7
+- Samsung Galaxy S7 Edge
+- Samsung Galaxy S8
+- Samsung Galaxy S8+
+- Samsung Galaxy S9
+- Samsung Galaxy S9+
+- Samsung Galaxy Xcover 3
+- Samsung Galaxy Z Flip
+- Samsung Galaxy Z Fold 2 5G
+- Sony Xperia 10
+- Sony Xperia 5
+- Sony Xperia XZ
+- Sony Xperia XZ1
+- Sony Xperia Z1
+- Sony Xperia Z1 Compact
+- Sony Xperia Z3 Compact
+- Sony Z5 Premium

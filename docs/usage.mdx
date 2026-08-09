@@ -1,0 +1,279 @@
+---
+id: usage
+title: Usage
+sidebar_position: 4
+hide_title: true
+---
+
+```mdx-code-block
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import CodeBlock from '@theme/CodeBlock';
+```
+
+## Configuration via Environment Variables
+
+Swarmdriver is entirely driven by environment variables, giving you fine-grained control over every aspect of your test configuration without changing code.
+
+### Core Configuration Matrix
+
+These three environment variables define your entire test matrix:
+
+| Variable | Values | Default | Description |
+|----------|--------|---------|-------------|
+| `WDIO_REMOTE` | `local` \| `saucelabs` | `local` | Where tests run (locally or on Sauce Labs cloud) |
+| `WDIO_SCOPE` | `browser` \| `app` | `browser` | What you test (web browser or native mobile app) |
+| `WDIO_METAL` | `desktop` \| `device` | `desktop` | Physical target (desktop/laptop or mobile device/simulator) |
+| `WDIO_PROVIDER` | `saucelabs` | value of `WDIO_REMOTE` | Which cloud provider handles a non-local run — see [Providers](./providers.mdx) |
+
+### Logging Configuration
+
+| Variable | Values | Default | Description |
+|----------|--------|---------|-------------|
+| `SWARMDRIVER_LOG_LEVEL` | `trace` \| `debug` \| `info` \| `warn` \| `error` | `warn` | Swarmdriver logger verbosity level |
+| `WDIO_LOGLEVEL` | `trace` \| `debug` \| `info` \| `warn` \| `error` | `error` | WebdriverIO internal logger level |
+
+### Base URL Configuration
+
+When using `calcBaseUrl()` helper for local testing:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `4000` | Application server port (checked first) |
+| `HOST` | `0.0.0.0` | Application server host (checked first) |
+| `SWARMDRIVER_PORT` | — | Fallback port if `PORT` not set |
+| `SWARMDRIVER_HOST` | — | Fallback host if `HOST` not set |
+
+### Reporters & Output
+
+| Variable | Values | Default | Description |
+|----------|--------|---------|-------------|
+| `WDIO_REPORTERS` | comma-separated | See matrix | Reporter configuration (e.g., `spec`, `junit`, `saucecomment`) |
+| `SAUCECOMMENT_REPORTER_OUTPUT_DIR` | path | `build` | Output directory for Sauce Labs reporter |
+| `SAUCECOMMENT_REPORTER_SAVE_OUTPUT_TO_FILE` | `true` \| `false` | `true` | Save reporter output to file |
+
+### Device & Browser Configuration
+
+| Variable | Values | Default | Description |
+|----------|--------|---------|-------------|
+| `WDIO_DEVICES` | colon-separated | `android:ios` | Devices/emulators to test (e.g., `android:ios`) |
+| `WDIO_BROWSERS` | colon-separated | `chrome:safari` | Browsers to test (e.g., `chrome:safari:firefox`) |
+
+## Examples
+
+### Local Desktop Browser Testing
+
+```bash
+# Default - Chrome on localhost:4000
+wdio run wdio.conf.js
+
+# Or explicitly:
+WDIO_REMOTE=local WDIO_SCOPE=browser WDIO_METAL=desktop wdio run wdio.conf.js
+
+# Multiple browsers
+WDIO_BROWSERS=chrome:firefox:edge wdio run wdio.conf.js
+
+# Custom host/port
+HOST=127.0.0.1 PORT=3000 wdio run wdio.conf.js
+```
+
+### Local Mobile Device Testing
+
+```bash
+# Test on Android and iOS devices/simulators
+WDIO_METAL=device wdio run wdio.conf.js
+
+# Specific devices
+WDIO_DEVICES=android:ios WDIO_METAL=device wdio run wdio.conf.js
+```
+
+### Local Native App Testing
+
+```bash
+# Android and iOS native apps (requires Appium)
+WDIO_SCOPE=app wdio run wdio.conf.js
+
+# Single platform
+WDIO_SCOPE=app WDIO_DEVICES=android wdio run wdio.conf.js
+```
+
+### Cloud Testing with Sauce Labs
+
+```bash
+# Browser on cloud
+WDIO_REMOTE=saucelabs WDIO_SCOPE=browser WDIO_METAL=desktop wdio run wdio.conf.js
+
+# Mobile browser on cloud
+WDIO_REMOTE=saucelabs WDIO_SCOPE=browser WDIO_METAL=device wdio run wdio.conf.js
+
+# Native app on cloud
+WDIO_REMOTE=saucelabs WDIO_SCOPE=app wdio run wdio.conf.js
+```
+
+You'll need Sauce Labs credentials:
+
+```bash
+WDIO_REMOTE=saucelabs \
+SAUCE_USERNAME=your-username \
+SAUCE_ACCESS_KEY=your-key \
+wdio run wdio.conf.js
+```
+
+### Logging & Debugging
+
+```bash
+# Verbose logging
+SWARMDRIVER_LOG_LEVEL=debug wdio run wdio.conf.js
+
+# Even more verbose
+SWARMDRIVER_LOG_LEVEL=trace WDIO_LOGLEVEL=debug wdio run wdio.conf.js
+
+# Combined with Sauce Labs (captures HAR files, console logs)
+WDIO_REMOTE=saucelabs \
+SWARMDRIVER_LOG_LEVEL=debug \
+wdio run wdio.conf.js
+```
+
+## Working with Page Objects
+
+The Page Object Design Pattern is a best practice for maintaining large test suites. It separates selectors and page-specific logic from test code.
+
+### Basic Page Object Structure
+
+```javascript
+// test/pages/base.page.js
+export class BasePage {
+  async open(url) {
+    await browser.url(url)
+  }
+
+  async waitForElement(selector, timeout = 5000) {
+    const elem = await $(selector)
+    await elem.waitForDisplayed({ timeout })
+    return elem
+  }
+}
+```
+
+```javascript
+// test/pages/login.page.js
+import { BasePage } from './base.page.js'
+
+export class LoginPage extends BasePage {
+  // Define page elements as getters
+  get emailField() {
+    return $('input[type="email"]')
+  }
+
+  get passwordField() {
+    return $('input[type="password"]')
+  }
+
+  get submitButton() {
+    return $('button[type="submit"]')
+  }
+
+  get errorMessage() {
+    return $('[role="alert"]')
+  }
+
+  // Define page-specific methods
+  async login(email, password) {
+    await this.emailField.setValue(email)
+    await this.passwordField.setValue(password)
+    await this.submitButton.click()
+  }
+
+  async getErrorText() {
+    return this.errorMessage.getText()
+  }
+}
+
+export default new LoginPage()
+```
+
+### Using Page Objects in Tests
+
+```javascript
+// test/specs/login.spec.js
+import LoginPage from '../pages/login.page.js'
+
+describe('Login', () => {
+  beforeEach(async () => {
+    await LoginPage.open('https://app.example.com/login')
+  })
+
+  it('should log in with valid credentials', async () => {
+    await LoginPage.login('user@example.com', 'password')
+    
+    await browser.waitUntil(async () => {
+      const url = await browser.getUrl()
+      return url.includes('/dashboard')
+    })
+  })
+
+  it('should show error with invalid credentials', async () => {
+    await LoginPage.login('wrong@example.com', 'wrong-pass')
+    
+    const errorText = await LoginPage.getErrorText()
+    expect(errorText).toContain('Invalid credentials')
+  })
+})
+```
+
+### Benefits of Page Objects
+
+- **Maintainability**: Selectors are centralized, so UI changes only require updates in one place
+- **Readability**: Tests read like human-readable workflows rather than technical selectors
+- **Reusability**: Common page operations can be used across multiple test files
+- **Abstraction**: Tests focus on "what" to test, not "how" to interact with the UI
+
+## Sauce Labs Capabilities
+
+When testing on Sauce Labs, you can leverage these additional browser capabilities:
+
+### Browser Testing Options
+
+| Setting | Description | Key | Value Type | Example |
+|---------|-------------|-----|------------|---------|
+| Browser Name | The name of the browser | browserName | string | `"chrome"`, `"firefox"`, `"safari"` |
+| Browser Version | Browser version to use | browserVersion | string | `"latest"`, `"latest-1"`, `"118"` |
+| Platform Name | Operating system | platformName | string | `"Windows 11"`, `"macOS 13"`, `"Ubuntu 22.04"` |
+
+### Optional Sauce-Specific Capabilities
+
+| Option | Description | Key | Value Type |
+|--------|-------------|-----|------------|
+| Extended Debugging | Records HAR files and console logs | extendedDebugging | boolean |
+| Performance Capture | Enable performance metrics | capturePerformance | boolean |
+| Screenshot on Failure | Auto-capture screenshots on errors | webdriver.remote.quietExceptions | boolean |
+| ChromeDriver Version | Specific ChromeDriver version | chromedriverVersion | string |
+| GeckoDriver Version | Specific GeckoDriver version | geckodriverVersion | string |
+
+Set these via environment variables that map to capabilities in your configuration.
+
+## Custom Configuration via buildWdioConfig()
+
+For advanced use cases, you can pass additional parameters to `buildWdioConfig()`:
+
+```javascript
+import { buildWdioConfig } from 'swarmdriver'
+
+const config = buildWdioConfig({
+  envs: process.env,
+  remote: 'local',
+  scope: 'browser',
+  metal: 'desktop',
+  framework: 'jasmine',
+  
+  // Additional options
+  pkgName: 'my-app-tests',  // Used for build names on Sauce Labs
+  specs: ['./test/**/*.spec.js'],
+  maxInstances: 4,
+  connectionRetryCount: 3,
+})
+
+export default config
+```
+
+See [WebdriverIO Configuration](https://webdriver.io/docs/configuration) for all available options.

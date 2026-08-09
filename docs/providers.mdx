@@ -1,0 +1,249 @@
+---
+id: providers
+title: Providers
+sidebar_position: 5
+hide_title: true
+---
+
+# Providers
+
+A **provider** is swarmdriver's abstraction for a remote (cloud) WebDriver grid.
+Everything vendor-specific — the environment defaults it wants, the capabilities
+it understands, the endpoint it connects to — lives behind one small interface,
+so `buildWdioConfig()` never has to know which grid it is talking to.
+
+Local execution is not a provider. `WDIO_REMOTE=local` drives Appium/chromedriver
+on your own machine and bypasses the registry entirely.
+
+## Shipping implementations
+
+| Provider | `WDIO_PROVIDER` | Status |
+|----------|-----------------|--------|
+| Sauce Labs | `saucelabs` | Supported, fully exercised by the test suite |
+
+Sauce Labs is the **only** implementation that ships with swarmdriver, and that
+is deliberate. See [Contributing a provider](#contributing-a-provider).
+
+## Selecting a provider
+
+The provider is resolved from `WDIO_PROVIDER`, falling back to the `remote`
+argument (i.e. `WDIO_REMOTE`):
+
+```js
+import { buildWdioConfig } from 'swarmdriver'
+
+export const config = buildWdioConfig({
+  envs: process.env,
+  remote: process.env.WDIO_REMOTE,   // 'local' | 'saucelabs'
+  scope: process.env.WDIO_SCOPE,     // 'browser' | 'app'
+  metal: process.env.WDIO_METAL,     // 'desktop' | 'device'
+  pkgName: 'my-e2e-suite',
+})
+```
+
+| Variable | Values | Default | Description |
+|----------|--------|---------|-------------|
+| `WDIO_PROVIDER` | `saucelabs` | value of `remote` | Overrides which cloud provider handles the run |
+
+If neither resolves to a registered provider, `buildWdioConfig()` returns
+`undefined` rather than guessing.
+
+You can also reach the registry directly:
+
+```js
+import { getProvider, providers, DEFAULT_PROVIDER_NAME } from 'swarmdriver'
+
+getProvider()                 // → the saucelabs provider (DEFAULT_PROVIDER_NAME)
+getProvider('saucelabs')      // → the saucelabs provider
+getProvider('nope')           // → undefined
+Object.keys(providers)        // → ['saucelabs']
+```
+
+## The interface
+
+A provider is a plain object with five members:
+
+```js
+/** @type {import('swarmdriver').Provider} */
+export const myProvider = {
+  name: 'myprovider',
+
+  applyEnvDefaults(envs, { scope, metal }) {},
+
+  setupDesktopBrowsers({ envs, framework, tunnelPrefix, buildSuffix }) {},
+  setupDeviceBrowsers({ envs, framework, tunnelPrefix, buildSuffix }) {},
+  setupNativeApp({ envs, framework, tunnelPrefix, buildSuffix }) {},
+}
+```
+
+| Member | Contract |
+|--------|----------|
+| `name` | Registry key, and the value users put in `WDIO_PROVIDER`. |
+| `applyEnvDefaults(envs, { scope, metal })` | Mutates `envs` **in place**, filling in defaults for anything the caller left unset. Must never overwrite a value that is already present. Called once, before dispatch. |
+| `setupDesktopBrowsers(options)` | Web app on desktop browsers (`scope=browser`, `metal=desktop`). Returns a complete WebdriverIO config. |
+| `setupDeviceBrowsers(options)` | Web app on mobile browsers (`scope=browser`, `metal=device`). |
+| `setupNativeApp(options)` | Native app on a device (`scope=app`; `metal` is forced to `device`). |
+
+`options` is `{ envs, framework, tunnelPrefix, buildSuffix }`, where
+`tunnelPrefix`/`buildSuffix` are both derived from the caller's `pkgName` and
+are used to seed tunnel and build identifiers.
+
+### The one rule that will silently bite you
+
+**Connection details go at the top level of the returned config, never inside
+`capabilities`.**
+
+```js
+// ✅ correct
+return {
+  hostname: 'ondemand.us-west-1.saucelabs.com',
+  port: 443,
+  capabilities: [
+    { browserName: 'chrome', 'sauce:options': { /* ... */ } },
+  ],
+}
+
+// ❌ wrong — WebdriverIO v9 drops it, and you get 127.0.0.1:4444
+return {
+  capabilities: [
+    { browserName: 'chrome', hostname: 'ondemand.us-west-1.saucelabs.com', port: 443 },
+  ],
+}
+```
+
+WebdriverIO v9 treats capabilities as strict W3C. Non-standard, non-prefixed
+keys such as `hostname`, `port`, `path`, `protocol` and `maxInstances` are
+stripped from a capability object. Nothing throws — the session just quietly
+connects to the default local address and every test fails for a reason that
+looks nothing like the cause. The `test/wdio-config-smoke.test.js` gate exists
+specifically to catch this; it runs every `remote × scope × metal` combination
+through WebdriverIO's real config validator and asserts that no bare
+non-W3C keys survive inside `capabilities`.
+
+## Worked example: Sauce Labs
+
+The Sauce Labs provider lives in `src/providers/saucelabs/` and is split in two:
+
+```text
+src/providers/
+├── provider.js              # the Provider typedef + DEFAULT_PROVIDER_NAME
+├── index.js                 # the registry: getProvider() / providers
+└── saucelabs/
+    ├── index.js             # the Provider implementation (the 5 members)
+    └── capabilities.js      # Sauce-specific parse*/build* helpers
+```
+
+### `applyEnvDefaults`
+
+Sauce owns its own defaults, including the Sauce-only `saucecomment` reporter
+(which writes results back onto the Sauce job):
+
+```js
+applyEnvDefaults(envs = {}, { scope, metal } = {}) {
+  envs.WDIO_REPORTERS || (envs.WDIO_REPORTERS = 'spec:junit:saucecomment')
+  envs.SAUCECOMMENT_REPORTER_OUTPUT_DIR || (envs.SAUCECOMMENT_REPORTER_OUTPUT_DIR = 'build')
+  envs.SAUCECOMMENT_REPORTER_SAVE_OUTPUT_TO_FILE || (envs.SAUCECOMMENT_REPORTER_SAVE_OUTPUT_TO_FILE = 'true')
+
+  if (scope === 'browser') {
+    if (metal === 'device') {
+      envs.WDIO_DEVICES || (envs.WDIO_DEVICES = 'android:ios')
+    }
+
+    if (metal === 'desktop') {
+      envs.WDIO_BROWSERS || (envs.WDIO_BROWSERS = 'chrome:safari:firefox')
+    }
+  }
+
+  if (scope === 'app') {
+    envs.WDIO_DEVICES || (envs.WDIO_DEVICES = 'android:ios')
+    envs.WDIO_METAL || (envs.WDIO_METAL = 'device')
+  }
+}
+```
+
+Note the `x || (x = default)` idiom: an operator-precedence-safe way of saying
+"only if unset". Respecting an already-set value is part of the contract.
+
+### The three `setup*` functions
+
+Each one follows the same shape:
+
+1. Parse the environment into a list of targets (`WDIO_BROWSERS` /
+   `WDIO_DEVICES`).
+2. Build the provider identifiers once (`buildSauceVars()` → tunnel id, tunnel
+   owner, build id).
+3. Build the base config, **including the top-level `hostname`/`port`**, and
+   merge in the provider's service block (`buildSauceSettings()` → the
+   `@wdio/sauce-service` entry plus `user`/`key`/`region`).
+4. Reduce over the targets, appending one W3C capability object per target and
+   tagging it with `swarmdriver:testMode`.
+
+The capability objects themselves are assembled from `./capabilities.js`, which
+is organised by concern — W3C required/optional, Appium, Sauce-specific
+optional, per-browser, per-platform, real-device:
+
+```js
+import {
+  buildW3CWebDriverCapabilitiesRequired,
+  buildW3CWebDriverBrowserCapabilitiesOptional,
+  buildDesktopBrowserCapabilitiesSauceSpecificOptional,
+  buildDesktopMobileCapabilitiesSauceSpecificOptional,
+} from './capabilities'
+
+const capability = {
+  ...buildW3CWebDriverCapabilitiesRequired(values),
+  ...buildW3CWebDriverBrowserCapabilitiesOptional(values),
+  sauceOptions: {
+    ...buildDesktopBrowserCapabilitiesSauceSpecificOptional(values),
+    ...buildDesktopMobileCapabilitiesSauceSpecificOptional({
+      build: buildId,
+      tunnelName: tunnelId,
+      ...values,
+    }),
+  },
+}
+```
+
+Every helper is a pure `(values) => object` function that only emits a key when
+the corresponding value actually exists, so an unset environment variable
+produces no capability at all rather than an `undefined` one. Your provider's
+capability layer will look nothing like Sauce's — that is fine, it is an
+implementation detail behind the five-member interface.
+
+## Contributing a provider
+
+BrowserStack, LambdaTest, Perfecto, TestingBot and friends are all reachable
+through this interface, and contributions are very welcome.
+
+We deliberately do **not** ship stub implementations for grids nobody has run.
+A provider that has never authenticated against the real service is worse than
+no provider: it looks supported, it type-checks, and it fails at 2am in someone
+else's CI. Every provider in this repo should be one that a maintainer or
+contributor actually runs.
+
+To add one:
+
+1. Create `src/providers/<name>/index.js` exporting a `Provider` object with the
+   five members above. Put the vendor's capability helpers in a sibling
+   `capabilities.js`.
+2. Register it in `src/providers/index.js`:
+
+   ```js
+   import { myProvider } from './myprovider'
+
+   export const providers = {
+     [saucelabsProvider.name]: saucelabsProvider,
+     [myProvider.name]: myProvider,
+   }
+   ```
+
+3. Add unit tests for the capability helpers, mirroring
+   `src/providers/saucelabs/capabilities.test.js`.
+4. Extend `MATRIX` in `scripts/lib/wdio-config-smoke.js` with your
+   `remote × scope × metal` combinations so the W3C validation gate covers them.
+5. Document your environment variables, and add a row to the table at the top of
+   this page.
+6. Run `npm test`, then `npm run build && npm run smoke`. Both must be green.
+
+Please open an issue before starting a large provider so we can agree on the
+environment-variable naming up front.

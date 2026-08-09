@@ -1,0 +1,5 @@
+export { default as SauceCommentReporter } from './comment-reporter'
+export * from './comment-reporter'
+export * from './junit-reporter'
+export * from './spec-reporter'
+export * from './report-portal-reporter'
