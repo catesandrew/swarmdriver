@@ -1,0 +1,86 @@
+{
+  "version": "0.1.0",
+  "license": "MIT",
+  "author": "Andrew Cates <catesandrew@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/catesandrew/swarmdriver.git"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "type": "module",
+  "name": "@caps/cli",
+  "description": "swarmdriver command-line tools: Sauce Labs jobs/storage CLI plus pinned wdio/appium/allure bin proxies.",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./jobs": {
+      "types": "./dist/types/jobs/index.d.ts",
+      "import": "./dist/jobs.js",
+      "require": "./dist/jobs.cjs"
+    },
+    "./storage": {
+      "types": "./dist/types/storage/index.d.ts",
+      "import": "./dist/storage.js",
+      "require": "./dist/storage.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "bin": {
+    "swarm-allure": "./bin/allure.js",
+    "swarm-appium": "./bin/appium.js",
+    "swarm-jasmine": "./bin/jasmine.js",
+    "swarm-sauce": "./bin/sauce.js",
+    "swarm-sauce-connect": "./bin/sauce-connect",
+    "swarm-sauce-storage": "./bin/sauce-storage.js",
+    "swarm-wdio": "./bin/wdio.js"
+  },
+  "scripts": {
+    "build": "pnpm run build:js && pnpm run build:types",
+    "build:js": "tsup",
+    "build:types": "tsc -p tsconfig.build.json",
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@caps/core": "workspace:*",
+    "@wdio/cli": "^9.0.0",
+    "allure-commandline": "^2.29.0",
+    "appium": "^2.11.0",
+    "commander": "^11.1.0",
+    "form-data": "^4.0.0",
+    "js-yaml": "^4.1.0",
+    "node-fetch": "^2.7.0",
+    "yn": "^4.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.14.0",
+    "@types/node-fetch": "^2.6.11",
+    "eslint": "^9.0.0",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-promise": "^7.2.1",
+    "globals": "^15.0.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.0.0"
+  }
+}

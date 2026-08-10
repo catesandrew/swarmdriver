@@ -257,7 +257,8 @@ Set these via environment variables that map to capabilities in your configurati
 For advanced use cases, you can pass additional parameters to `buildWdioConfig()`:
 
 ```javascript
-import { buildWdioConfig } from 'swarmdriver'
+import '@caps/providers'                    // required for remote: 'saucelabs'
+import { buildWdioConfig } from '@caps/core'
 
 const config = buildWdioConfig({
   envs: process.env,

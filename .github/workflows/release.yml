@@ -24,17 +24,22 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Must come before `setup-node`, which needs the pnpm binary on PATH to
+      # resolve the store directory for `cache: pnpm`.
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
+          cache: pnpm
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Build
-        run: npm run build
+        run: pnpm -r build
 
       - name: Create release pull request or publish
         id: changesets
@@ -44,8 +49,12 @@ jobs:
           # is configured as a repository secret. Until then, changesets/action
           # will only open/update the "Version Packages" PR and will NOT
           # publish to npm (no publish command is wired below).
-          # publish: npm publish
-          version: npx changeset version
+          #
+          # In a pnpm workspace the publish command must be `pnpm publish -r`
+          # (not `npm publish`) so every changed workspace package is published
+          # and `workspace:*` protocol ranges are rewritten to real versions.
+          # publish: pnpm publish -r --access public --no-git-checks
+          version: pnpm changeset version
           commit: "chore: version packages"
           title: "chore: version packages"
         env:

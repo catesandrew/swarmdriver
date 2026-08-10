@@ -10,41 +10,112 @@ import TabItem from '@theme/TabItem';
 import CodeBlock from '@theme/CodeBlock';
 ```
 
+## Packages
+
+Swarmdriver ships as several packages under the `@caps` scope rather than one
+`swarmdriver` package. Install only what you need:
+
+| Package | What it is | Needed when |
+|---------|------------|-------------|
+| `@caps/core` | `buildWdioConfig()`, the config matrix, helpers, and the provider registry | Always |
+| `@caps/providers` | Cloud-grid provider implementations (Sauce Labs) | Running against a cloud grid |
+| `@caps/reporters` | WebdriverIO reporters (spec, junit, ReportPortal, Sauce comments) | Customising reporters directly |
+| `@caps/cli` | `swarm-*` CLI tools and pinned `wdio`/`appium`/`allure` proxies | Using the CLI tooling |
+
 ## Installation
 
-You can install `swarmdriver` using your favorite package manager:
+For local-only runs, `@caps/core` is enough:
 
 <Tabs
   groupId="pkg-manager"
-  defaultValue="npm"
+  defaultValue="pnpm"
   values={[
+    { label: "pnpm", value: "pnpm" },
     { label: "npm", value: "npm" },
     { label: "yarn", value: "yarn" },
     { label: "bun", value: "bun" },
   ]}>
+  <TabItem value="pnpm">
+
+```shell
+pnpm add -D @caps/core
+```
+
+  </TabItem>
   <TabItem value="npm">
 
 ```shell
-npm install --save-dev swarmdriver
+npm install --save-dev @caps/core
 ```
 
   </TabItem>
   <TabItem value="yarn">
 
 ```shell
-yarn add -D swarmdriver
+yarn add -D @caps/core
 ```
 
   </TabItem>
   <TabItem value="bun">
 
 ```shell
-bun add --dev swarmdriver
+bun add --dev @caps/core
 ```
 
   </TabItem>
 
 </Tabs>
+
+To run against Sauce Labs, add `@caps/providers`:
+
+<Tabs
+  groupId="pkg-manager"
+  defaultValue="pnpm"
+  values={[
+    { label: "pnpm", value: "pnpm" },
+    { label: "npm", value: "npm" },
+    { label: "yarn", value: "yarn" },
+    { label: "bun", value: "bun" },
+  ]}>
+  <TabItem value="pnpm">
+
+```shell
+pnpm add -D @caps/core @caps/providers
+```
+
+  </TabItem>
+  <TabItem value="npm">
+
+```shell
+npm install --save-dev @caps/core @caps/providers
+```
+
+  </TabItem>
+  <TabItem value="yarn">
+
+```shell
+yarn add -D @caps/core @caps/providers
+```
+
+  </TabItem>
+  <TabItem value="bun">
+
+```shell
+bun add --dev @caps/core @caps/providers
+```
+
+  </TabItem>
+
+</Tabs>
+
+:::warning Upgrading from the single `swarmdriver` package
+
+`@caps/core` ships **no** providers. If you use `remote: 'saucelabs'` you must
+also add a bare side-effect import of `@caps/providers` — otherwise
+`buildWdioConfig()` returns `undefined` with no error. See
+[Quick Setup](#quick-setup) below and the [Providers](./providers.mdx) page.
+
+:::
 
 ## Dependencies
 
@@ -69,7 +140,11 @@ For cloud testing with Sauce Labs:
 After installation, create a `wdio.conf.js` in your project root:
 
 ```javascript
-import { buildWdioConfig } from 'swarmdriver'
+// Side-effect import: registers the cloud providers (e.g. 'saucelabs') into
+// @caps/core's registry. Omit it and remote: 'saucelabs' resolves to nothing.
+// Safe to keep even for local-only runs.
+import '@caps/providers'
+import { buildWdioConfig } from '@caps/core'
 
 // Build your config from the matrix
 const config = buildWdioConfig({

@@ -19,33 +19,48 @@ Get up and running with Swarmdriver in under 5 minutes.
 
 <Tabs
   groupId="pkg-manager"
-  defaultValue="npm"
+  defaultValue="pnpm"
   values={[
+    { label: "pnpm", value: "pnpm" },
     { label: "npm", value: "npm" },
     { label: "yarn", value: "yarn" },
   ]}>
+  <TabItem value="pnpm">
+
+```bash
+pnpm add -D @caps/core @caps/providers webdriverio appium
+```
+
+  </TabItem>
   <TabItem value="npm">
 
 ```bash
-npm install --save-dev swarmdriver webdriverio appium
+npm install --save-dev @caps/core @caps/providers webdriverio appium
 ```
 
   </TabItem>
   <TabItem value="yarn">
 
 ```bash
-yarn add -D swarmdriver webdriverio appium
+yarn add -D @caps/core @caps/providers webdriverio appium
 ```
 
   </TabItem>
 </Tabs>
+
+`@caps/core` is the config builder; `@caps/providers` supplies the cloud grids.
+Drop `@caps/providers` if you will only ever run locally.
 
 ### 2. Create Your Configuration
 
 Create `wdio.conf.js`:
 
 ```javascript
-import { buildWdioConfig } from 'swarmdriver'
+// Registers the cloud providers into @caps/core's registry. This bare import
+// is required for remote: 'saucelabs' — without it buildWdioConfig() returns
+// undefined instead of a config.
+import '@caps/providers'
+import { buildWdioConfig } from '@caps/core'
 
 const config = buildWdioConfig({
   envs: process.env,

@@ -5,10 +5,19 @@ hide_title: true
 custom_edit_url: null
 ---
 
-```mdx-code-block
-import Changelog, { toc as ChangelogTOC } from '@site/../packages/wdio-happy/CHANGELOG.md'
+# Changelog
 
-<Changelog />
+Swarmdriver is a pnpm workspace monorepo, so there is no single changelog.
+Each publishable package is versioned independently by
+[Changesets](https://github.com/changesets/changesets) and keeps its own
+`CHANGELOG.md` next to its source:
 
-export const toc = ChangelogTOC
-```
+| Package | Changelog |
+|---------|-----------|
+| `@caps/core` | [`packages/core/CHANGELOG.md`](https://github.com/catesandrew/swarmdriver/blob/main/packages/core/CHANGELOG.md) |
+| `@caps/providers` | [`packages/providers/CHANGELOG.md`](https://github.com/catesandrew/swarmdriver/blob/main/packages/providers/CHANGELOG.md) |
+| `@caps/reporters` | [`packages/reporters/CHANGELOG.md`](https://github.com/catesandrew/swarmdriver/blob/main/packages/reporters/CHANGELOG.md) |
+| `@caps/cli` | [`packages/cli/CHANGELOG.md`](https://github.com/catesandrew/swarmdriver/blob/main/packages/cli/CHANGELOG.md) |
+
+A package's `CHANGELOG.md` is created by the first release that includes it, so
+a link above will 404 until that package has shipped at least once.

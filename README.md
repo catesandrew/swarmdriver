@@ -14,18 +14,42 @@ An environment-variable-driven **WebdriverIO + Appium test harness** for cross-d
 - **Page Object Pattern**: Built-in support for clean, maintainable test code
 - **Zero magic**: Simple matrix configuration (3 axes, 8 core configurations)
 
+## 📦 Packages
+
+Swarmdriver is a [pnpm workspace](https://pnpm.io/workspaces) monorepo. The
+single `swarmdriver` package of v1 has been split into four publishable
+packages under the `@caps` scope, so you only install the parts you use:
+
+| Package | Install | What it is |
+|---------|---------|------------|
+| [`@caps/core`](./packages/core) | `pnpm add -D @caps/core` | `buildWdioConfig()`, the config matrix, helpers, machines, services, and the provider **registry**. |
+| [`@caps/providers`](./packages/providers) | `pnpm add -D @caps/providers` | Cloud-grid provider **implementations** (Sauce Labs). Registers itself into `@caps/core` on import. |
+| [`@caps/reporters`](./packages/reporters) | `pnpm add -D @caps/reporters` | WebdriverIO reporters (spec, junit, ReportPortal, Sauce job comments). |
+| [`@caps/cli`](./packages/cli) | `pnpm add -D @caps/cli` | `swarm-*` command-line tools plus pinned `wdio`/`appium`/`allure` bin proxies. |
+
+`packages/integration-tests` is private and is not published — it is the
+cross-package regression suite, including the WDIO 9 config smoke gate.
+
 ## 🚀 Quick Start
 
 ### Installation
 
+Local-only runs need just `@caps/core`:
+
 ```bash
-npm install --save-dev swarmdriver webdriverio appium
+pnpm add -D @caps/core webdriverio appium
+```
+
+Cloud runs (Sauce Labs) additionally need `@caps/providers`:
+
+```bash
+pnpm add -D @caps/core @caps/providers webdriverio appium
 ```
 
 ### Create `wdio.conf.js`
 
 ```javascript
-import { buildWdioConfig } from 'swarmdriver'
+import { buildWdioConfig } from '@caps/core'
 
 const config = buildWdioConfig({
   envs: process.env,
@@ -37,6 +61,47 @@ const config = buildWdioConfig({
 
 export default config
 ```
+
+### ⚠️ Breaking change from v1: providers must be imported
+
+> **If you use `remote: 'saucelabs'`, you must add a side-effect import of
+> `@caps/providers`. Without it `buildWdioConfig()` silently returns
+> `undefined`.**
+
+In v1 everything lived in one package, so the Sauce Labs provider was always
+present. Now `@caps/core` owns the provider *registry* but ships **no**
+implementations — that one-way dependency is what keeps core from depending on
+its own providers (a cycle). `@caps/providers` registers itself into the
+registry **as an import side effect**, so the import must actually execute
+before `buildWdioConfig()` runs:
+
+```javascript
+import '@caps/providers'                    // ← side effect: registers 'saucelabs'
+import { buildWdioConfig } from '@caps/core'
+
+const config = buildWdioConfig({
+  envs: process.env,
+  remote: 'saucelabs',
+  scope: process.env.WDIO_SCOPE || 'browser',
+  metal: process.env.WDIO_METAL || 'desktop',
+  framework: 'jasmine',
+})
+
+export default config
+```
+
+Two things that will bite you:
+
+- **It is a bare import, not a named one.** `import '@caps/providers'` is
+  correct. There is nothing you need to destructure off it.
+- **Do not let a bundler tree-shake it away.** The import has no bindings, so
+  some setups drop it. `@caps/providers` sets `"sideEffects": true` in its
+  `package.json` to prevent that; if you re-export it through your own package,
+  preserve that flag.
+
+An unregistered provider is not an error — `buildWdioConfig()` returns
+`undefined` for any unknown remote, exactly as it does for a typo'd one. That
+is why a missing import shows up as an empty config rather than a stack trace.
 
 ### Run Tests
 
@@ -146,16 +211,24 @@ describe('Authentication', () => {
 
 ### Cloud Provider Support
 
-**Sauce Labs** is included as a reference implementation. Other cloud providers (BrowserStack, LambdaTest, etc.) can be implemented via the provider interface.
+**Sauce Labs** ships in `@caps/providers` as a reference implementation. Other cloud providers (BrowserStack, LambdaTest, etc.) can be implemented against the same provider interface.
+
+Remember the side-effect import — `@caps/core` alone knows about no providers at all:
+
+```javascript
+import '@caps/providers'   // registers 'saucelabs'
+```
 
 ```bash
-# Sauce Labs - included
+# Sauce Labs - ships in @caps/providers
 WDIO_REMOTE=saucelabs wdio
 
 # Custom providers coming soon
 WDIO_REMOTE=browserstack wdio
 WDIO_REMOTE=lambdatest wdio
 ```
+
+See **[Providers](./docs/providers.mdx)** for the full interface and a guide to contributing one.
 
 ## 📖 Documentation
 
@@ -165,7 +238,29 @@ Full documentation is available in the [`docs/`](./docs/) directory:
 - **[Installation](./docs/installation.mdx)** — Setup and dependencies
 - **[Quick Start](./docs/quick-start.mdx)** — First test in 5 minutes
 - **[Usage](./docs/usage.mdx)** — Environment variables, examples, best practices
+- **[Providers](./docs/providers.mdx)** — Provider registry, interface, and contribution guide
 - **[API Reference](./docs/api/)** — Complete API documentation
+
+## 🏗️ Developing this repo
+
+Swarmdriver uses **pnpm** (see `packageManager` in the root `package.json`) and
+[Changesets](https://github.com/changesets/changesets) for versioning.
+
+```bash
+pnpm install              # install the whole workspace
+
+pnpm -r build             # build every package (must run before tests)
+pnpm -r test              # run every package's unit suite
+pnpm -r lint              # eslint, including all TypeScript sources
+pnpm smoke                # WDIO 9 config smoke gate
+pnpm build-docs           # regenerate docs/api via TypeDoc
+
+pnpm changeset            # record a change for the next release
+```
+
+Build before test: packages consume each other through their published
+`exports` (`dist/`), so an unbuilt dependency makes cross-package tests fail to
+resolve. CI enforces the same order.
 
 ## 🔧 Usage Examples
 

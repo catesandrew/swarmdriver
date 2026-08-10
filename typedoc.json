@@ -1,6 +1,12 @@
 {
   "$schema": "https://typedoc.org/schema.json",
-  "entryPoints": ["src/index.js"],
+  "entryPoints": [
+    "packages/core",
+    "packages/providers",
+    "packages/reporters",
+    "packages/cli"
+  ],
+  "entryPointStrategy": "packages",
   "out": "docs/api",
   "plugin": ["typedoc-plugin-markdown"],
   "readme": "none",
@@ -10,6 +16,5 @@
   "useCodeBlocks": true,
   "skipErrorChecking": true,
   "excludePrivate": true,
-  "excludeInternal": true,
-  "tsconfig": "./tsconfig.build.json"
+  "excludeInternal": true
 }

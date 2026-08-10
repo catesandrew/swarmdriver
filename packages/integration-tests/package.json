@@ -1,0 +1,38 @@
+{
+  "version": "0.1.0",
+  "license": "MIT",
+  "author": "Andrew Cates <catesandrew@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/catesandrew/swarmdriver.git"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "name": "@caps/integration-tests",
+  "private": true,
+  "description": "Cross-package regression suite: exercises buildWdioConfig() across the local and saucelabs paths, including the WDIO v9 config smoke gate.",
+  "scripts": {
+    "build": "node -e \"process.stdout.write('no build for @caps/integration-tests\\n')\"",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "smoke": "node scripts/smoke-wdio-config.js"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@types/node": "^20.14.0",
+    "eslint": "^9.0.0",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-promise": "^7.2.1",
+    "globals": "^15.0.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.0.0",
+    "@caps/core": "workspace:*",
+    "@caps/providers": "workspace:*",
+    "@wdio/config": "^9.0.0"
+  },
+  "type": "module"
+}
