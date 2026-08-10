@@ -271,9 +271,6 @@ importers:
 
   packages/providers:
     dependencies:
-      '@caps/cli':
-        specifier: workspace:*
-        version: link:../cli
       '@caps/core':
         specifier: workspace:*
         version: link:../core

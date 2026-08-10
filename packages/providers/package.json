@@ -47,7 +47,6 @@
   },
   "dependencies": {
     "@caps/core": "workspace:*",
-    "@caps/cli": "workspace:*",
     "@caps/reporters": "workspace:*",
     "@wdio/sauce-service": "^9.0.0",
     "lodash": "^4.17.21",

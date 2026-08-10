@@ -51,6 +51,11 @@
       "import": "./dist/providers.js",
       "require": "./dist/providers.cjs"
     },
+    "./sauce": {
+      "types": "./dist/types/sauce/index.d.ts",
+      "import": "./dist/sauce.js",
+      "require": "./dist/sauce.cjs"
+    },
     "./services": {
       "types": "./dist/types/services/index.d.ts",
       "import": "./dist/services.js",

@@ -1,65 +1,45 @@
+import type { SauceJobCredentials, SauceJobUpdate } from '@caps/core/sauce'
+
 import type { OutputFormat } from '../utils'
 
 /**
- * Shared shape of the Sauce Labs credential/display flags every `jobs`
- * subcommand accepts (via `SauceCommand`'s global options plus `--real`).
+ * The REST-facing types (`SauceJobCredentials`, `SauceJobUpdate`,
+ * `SauceJobResponse`) live in `@caps/core/sauce` alongside the client that
+ * uses them. Re-exported so `@caps/cli/jobs` consumers keep naming them from
+ * here.
  */
-export interface JobLookupOptions {
-  sauceUsername: string
-  sauceAccessKey: string
-  sauceRegion: string
-  isRealDevice?: boolean
+export type {
+  SauceJobCredentials,
+  SauceJobResponse,
+  SauceJobSummary,
+  SauceJobUpdate,
+  SauceRealDeviceListResponse,
+} from '@caps/core/sauce'
+
+/**
+ * Display-only flags every `jobs` subcommand accepts on top of the credentials
+ * the REST client needs (via `SauceCommand`'s global options plus `--real`).
+ */
+export interface JobDisplayOptions {
   verbose?: boolean
   color?: boolean
   output?: OutputFormat
 }
 
-/**
- * Fields this CLI actually reads off a Sauce Labs job/real-device-job REST
- * response. Deliberately loose (not a full Sauce API client type) — only
- * what `info`/`edit` project onto their own output shape.
- */
-export interface SauceJobResponse {
-  id: string
-  status?: string
-  name?: string
-  passed?: boolean
-  owner?: string
-  browser?: string
-  browser_version?: string
-  os?: string
-  os_version?: string
-  device_name?: string
-  start_time: number
-  end_time: number
-  tags?: string[]
-  log_url?: string
-  video_url?: string
-  error?: string
-  build?: string
-  public?: string
-  'custom-data'?: unknown
-  remote_app_file_url?: string
-  framework_log_url?: string
-  device_log_url?: string
-  requests_url?: string
-  test_cases_url?: string
-  screenshots?: string[]
-}
+/** Credentials plus the display flags — what `info()` accepts. */
+export interface JobLookupOptions extends SauceJobCredentials, JobDisplayOptions {}
 
-/** Options accepted by `edit()` — `JobLookupOptions` plus the mutable fields
- * a `PUT` can update. */
-export interface EditJobOptions extends JobLookupOptions {
-  // A new name for the job.
-  name?: string
-  // The set of distinguishing tags to apply to the job.
-  tags?: string[]
-  // Specifies the level of visibility permitted for the job.
-  visibility?: string
-  // Asserts whether the job passed (`true`) or not (`false`).
-  passed?: boolean
-  // Assign the job to a build. You can specify an existing build name or create a new one.
-  build?: string
-  // Any relevant attributes you wish to add to the job details.
-  customData?: unknown
+/** `JobLookupOptions` plus the mutable fields a `PUT` can update. */
+export interface EditJobOptions extends JobLookupOptions, SauceJobUpdate {}
+
+/** `JobLookupOptions` plus the listing's pagination/filter parameters. */
+export interface ListJobsOptions extends JobLookupOptions {
+  /** The maximum number of jobs to return. */
+  limit?: number
+  /** Return only the jobs beginning after this index number. */
+  skip?: number
+  /** Return only jobs that ran on or after this Unix timestamp. */
+  from?: number
+  /** Return only jobs that ran on or before this Unix timestamp. */
+  to?: number
 }

@@ -27,9 +27,11 @@ import {
 } from '@caps/core/services/utils'
 
 import {
-  info as infoJobUntyped,
-  edit as editJobUntyped,
-} from '@caps/cli/jobs'
+  getSauceJob,
+  updateSauceJob,
+  type SauceJobCredentials,
+  type SauceJobUpdate,
+} from '@caps/core/sauce'
 
 import {
   setupJunitConfig,
@@ -44,24 +46,14 @@ import type {
 } from '../types'
 
 /**
- * Options accepted by `@caps/cli`'s Sauce REST job helpers.
+ * Per-call overrides a test may pass to `updateJob()` / `getJob()`.
  *
- * `@caps/cli` is still plain JS, so its generated declarations infer this
- * argument from a defaults-only destructure — which means the credential
- * fields, having no defaults, are missing from the inferred type. Rather than
- * drop them at the call site, the two imports are re-typed through this
- * interface. Delete it once `@caps/cli/jobs` declares its own options type.
+ * The session already knows the credentials (they come from `envs`), so every
+ * field is optional here: a test calls `browser.updateJob({ passed: false })`
+ * and the hook fills in the rest.
  */
-interface SauceJobOptions {
-  sauceUsername?: string
-  sauceAccessKey?: string
-  sauceRegion?: string
-  isRealDevice?: boolean
-  [option: string]: unknown
-}
-
-const editJob = editJobUntyped as (id: string, opts?: SauceJobOptions) => Promise<unknown>
-const infoJob = infoJobUntyped as (id: string, opts?: SauceJobOptions) => Promise<unknown>
+type UpdateJobOverrides = Partial<SauceJobCredentials> & SauceJobUpdate
+type GetJobOverrides = Partial<SauceJobCredentials>
 
 /**
  * A test as the framework reports it to the `beforeTest`/`afterTest` hooks.
@@ -260,14 +252,14 @@ export const setupSauceNative = ({
         native: true,
       })
 
-      driver.addCommand('updateJob', function updateJob(opts: SauceJobOptions = {}) {
+      driver.addCommand('updateJob', function updateJob(opts: UpdateJobOverrides = {}) {
         // for real devices
         const url = new URL(driver.capabilities?.testobject_test_report_url || '')
         const splits = url.pathname?.split('/')
         if (splits && splits.length > 2) {
           const jobId = splits[2]
 
-          return editJob(jobId, {
+          return updateSauceJob(jobId, {
             sauceUsername: envs.SAUCE_USERNAME,
             sauceAccessKey: envs.SAUCE_ACCESS_KEY,
             sauceRegion: envs.SAUCE_REGION || 'us-west-1',
@@ -277,14 +269,14 @@ export const setupSauceNative = ({
         }
       })
 
-      driver.addCommand('getJob', function getJob(opts: SauceJobOptions = {}) {
+      driver.addCommand('getJob', function getJob(opts: GetJobOverrides = {}) {
         // for real devices
         const url = new URL(driver.capabilities?.testobject_test_report_url || '')
         const splits = url.pathname?.split('/')
         if (splits && splits.length > 2) {
           const jobId = splits[2]
 
-          return infoJob(jobId, {
+          return getSauceJob(jobId, {
             sauceUsername: envs.SAUCE_USERNAME,
             sauceAccessKey: envs.SAUCE_ACCESS_KEY,
             sauceRegion: envs.SAUCE_REGION || 'us-west-1',
@@ -380,8 +372,8 @@ export const setupSauceBrowser = ({
         overwrite: true,
       })
 
-      browser.addCommand('updateJob', function updateJob(this: any, opts: SauceJobOptions = {}) {
-        return editJob(this.sessionId, {
+      browser.addCommand('updateJob', function updateJob(this: any, opts: UpdateJobOverrides = {}) {
+        return updateSauceJob(this.sessionId, {
           sauceUsername: envs.SAUCE_USERNAME,
           sauceAccessKey: envs.SAUCE_ACCESS_KEY,
           sauceRegion: envs.SAUCE_REGION || 'us-west-1',
@@ -390,8 +382,13 @@ export const setupSauceBrowser = ({
         })
       })
 
-      driver.addCommand('getJob', function getJob(this: any, opts: SauceJobOptions = {}) {
-        return infoJob(this.sessionId, {
+      // `browser`, not `driver`. This is the browser setup and `driver` is not
+      // a binding in this scope — it silently resolved to the wdio testrunner's
+      // ambient global, so `getJob` was registered on whatever that happened to
+      // be rather than on the session this hook was handed. Every sibling
+      // command here uses the hook's own `browser` argument; this one didn't.
+      browser.addCommand('getJob', function getJob(this: any, opts: GetJobOverrides = {}) {
+        return getSauceJob(this.sessionId, {
           sauceUsername: envs.SAUCE_USERNAME,
           sauceAccessKey: envs.SAUCE_ACCESS_KEY,
           sauceRegion: envs.SAUCE_REGION || 'us-west-1',

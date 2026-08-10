@@ -1,19 +1,19 @@
-import fetch from 'node-fetch'
 import type { Command } from 'commander'
+
+import { updateSauceJob } from '@caps/core/sauce'
 
 import {
   outputColor,
-  sauceAuthorization,
-  sauceJobsAPI,
-  sauceRealDevicesAPI,
 } from '../utils'
 
-import {
-  existy,
-} from '@caps/core/utils'
+import type { EditJobOptions } from './types'
 
-import type { EditJobOptions, SauceJobResponse } from './types'
-
+/**
+ * `edit` is the CLI's *presentation* of `@caps/core`'s `updateSauceJob`: apply
+ * the update, then project the response down to the fields worth showing and
+ * render as JSON/YAML. Callers that want the raw object (e.g. a WebdriverIO
+ * session's `browser.updateJob()`) should use `updateSauceJob` directly.
+ */
 export const edit = async (id: string, {
   sauceUsername,
   sauceAccessKey,
@@ -29,49 +29,19 @@ export const edit = async (id: string, {
   color = false,
   output = 'json',
 }: EditJobOptions): Promise<string> => {
-  const authorization = sauceAuthorization(sauceUsername, sauceAccessKey)
-
-  let url: URL
-  if (isRealDevice) {
-    const apiUrl = sauceRealDevicesAPI(sauceRegion, `jobs/${ id }`)
-    url = new URL(apiUrl)
-  } else {
-    const apiUrl = sauceJobsAPI(sauceRegion, sauceUsername, id)
-    url = new URL(apiUrl)
-  }
-
-  return fetch(url.toString(), {
-    method: 'PUT',
-    headers: {
-      Authorization: `Basic ${ authorization }`,
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify({
-      ...(name && {
-        name,
-      }),
-      ...(tags && {
-        tags,
-      }),
-      ...(visibility && {
-        public: visibility,
-      }),
-      ...(existy(passed) && {
-        passed,
-      }),
-      ...(build && {
-        build,
-      }),
-      ...(customData && {
-        'custom-data': customData,
-      }),
-    })
+  return updateSauceJob(id, {
+    sauceUsername,
+    sauceAccessKey,
+    sauceRegion,
+    isRealDevice,
+    name,
+    tags,
+    visibility,
+    passed,
+    build,
+    customData,
   })
-  .then((res) => {
-    return res.json()
-  })
-  .then((json: SauceJobResponse) => {
+  .then((json) => {
     if (verbose) {
       return outputColor(json, {
         color,

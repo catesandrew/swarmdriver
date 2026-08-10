@@ -23,6 +23,7 @@ export default defineConfig({
     helpers: 'src/helpers/index.ts',
     machines: 'src/machines/index.ts',
     providers: 'src/providers/index.ts',
+    sauce: 'src/sauce/index.ts',
     services: 'src/services/index.ts',
     'services/base': 'src/services/base.ts',
     'services/utils': 'src/services/utils.ts',

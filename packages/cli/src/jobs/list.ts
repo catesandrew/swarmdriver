@@ -1,37 +1,26 @@
-import fetch from 'node-fetch'
 import type { Command } from 'commander'
+
+import { listSauceJobs } from '@caps/core/sauce'
+
 import {
   outputColor,
   name,
   pageValidator,
-  sauceAuthorization,
-  sauceRealDevicesAPI,
-  sauceJobsAPI,
-  type OutputFormat,
 } from '../utils'
 
-export interface ListJobsOptions {
-  sauceUsername: string
-  sauceAccessKey: string
-  sauceRegion: string
-  isRealDevice?: boolean
-  verbose?: boolean
-  color?: boolean
-  output?: OutputFormat
-  limit?: number
-  skip?: number
-  from?: number
-  to?: number
-}
+import type {
+  ListJobsOptions,
+  SauceJobSummary,
+  SauceRealDeviceListResponse,
+} from './types'
 
-interface SauceJobSummary {
-  id: string
-}
+export type { ListJobsOptions }
 
-interface SauceRealDeviceListResponse {
-  entities: SauceJobSummary[]
-}
-
+/**
+ * `list` is the CLI's *presentation* of `@caps/core`'s `listSauceJobs`: fetch
+ * the listing, then render either the ids alone or the full entries as
+ * JSON/YAML.
+ */
 export const list = async ({
   sauceUsername,
   sauceAccessKey,
@@ -40,56 +29,20 @@ export const list = async ({
   verbose = false,
   color = false,
   output = 'json',
-  ...opts
+  limit,
+  skip,
+  from,
+  to,
 }: ListJobsOptions): Promise<string> => {
-  const authorization = sauceAuthorization(sauceUsername, sauceAccessKey)
-
-  let url: URL
-  if (isRealDevice) {
-    const apiUrl = sauceRealDevicesAPI(sauceRegion, 'jobs')
-    url = new URL(apiUrl)
-
-    const params = url.searchParams
-    if (opts.limit) {
-      params.append('limit', String(opts.limit))
-    }
-
-    if (opts.skip) {
-      params.append('skip', String(opts.skip))
-    }
-  } else {
-    const apiUrl = sauceJobsAPI(sauceRegion, sauceUsername, '')
-
-    url = new URL(apiUrl)
-    const params = url.searchParams
-    if (opts.limit) {
-      params.append('limit', String(opts.limit))
-    }
-
-    if (opts.skip) {
-      params.append('skip', String(opts.skip))
-    }
-
-    if (opts.from) {
-      params.append('from', String(opts.from))
-    }
-
-    if (opts.to) {
-      params.append('to', String(opts.to))
-    }
-
-    params.append('format', 'json')
-  }
-
-  return fetch(url.toString(), {
-    method: 'GET',
-    headers: {
-      Authorization: `Basic ${ authorization }`,
-      Accept: 'application/json',
-    },
-  })
-  .then((res) => {
-    return res.json()
+  return listSauceJobs({
+    sauceUsername,
+    sauceAccessKey,
+    sauceRegion,
+    isRealDevice,
+    limit,
+    skip,
+    from,
+    to,
   })
   .then((json: SauceRealDeviceListResponse | SauceJobSummary[]) => {
     if (verbose) {

@@ -1,15 +1,19 @@
-import fetch from 'node-fetch'
 import type { Command } from 'commander'
+
+import { getSauceJob } from '@caps/core/sauce'
 
 import {
   outputColor,
-  sauceAuthorization,
-  sauceJobsAPI,
-  sauceRealDevicesAPI,
   toHHMMSS,
 } from '../utils'
-import type { JobLookupOptions, SauceJobResponse } from './types'
+import type { JobLookupOptions } from './types'
 
+/**
+ * `info` is the CLI's *presentation* of `@caps/core`'s `getSauceJob`: fetch the
+ * job, then project it down to the fields worth showing and render as
+ * JSON/YAML. Callers that want the raw object (e.g. a WebdriverIO session's
+ * `browser.getJob()`) should use `getSauceJob` directly.
+ */
 export const info = async (id: string, {
   sauceUsername,
   sauceAccessKey,
@@ -19,28 +23,13 @@ export const info = async (id: string, {
   color = false,
   output = 'json',
 }: JobLookupOptions): Promise<string> => {
-  const authorization = sauceAuthorization(sauceUsername, sauceAccessKey)
-
-  let url: URL
-  if (isRealDevice) {
-    const apiUrl = sauceRealDevicesAPI(sauceRegion, `jobs/${ id }`)
-    url = new URL(apiUrl)
-  } else {
-    const apiUrl = sauceJobsAPI(sauceRegion, sauceUsername, id)
-    url = new URL(apiUrl)
-  }
-
-  return fetch(url.toString(), {
-    method: 'GET',
-    headers: {
-      Authorization: `Basic ${ authorization }`,
-      Accept: 'application/json',
-    }
+  return getSauceJob(id, {
+    sauceUsername,
+    sauceAccessKey,
+    sauceRegion,
+    isRealDevice,
   })
-  .then((res) => {
-    return res.json()
-  })
-  .then((json: SauceJobResponse) => {
+  .then((json) => {
     if (verbose) {
       return outputColor(json, {
         color,

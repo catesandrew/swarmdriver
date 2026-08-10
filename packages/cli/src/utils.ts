@@ -4,6 +4,28 @@
 import yaml from 'js-yaml'
 import { InvalidArgumentError, type Command } from 'commander'
 
+/**
+ * The Sauce endpoint/authorization builders live in `@caps/core` — they are
+ * pure URL and header construction with no CLI concern, and a WebdriverIO
+ * session needs them too (see `@caps/core/sauce`). Re-exported here so the
+ * `storage/*` and `jobs/*` commands keep importing them from one place.
+ */
+import {
+  sauceAPI,
+  sauceAuthorization,
+  sauceJobsAPI,
+  sauceRealDevicesAPI,
+  sauceStorageAPI,
+} from '@caps/core/sauce'
+
+export {
+  sauceAPI,
+  sauceAuthorization,
+  sauceJobsAPI,
+  sauceRealDevicesAPI,
+  sauceStorageAPI,
+}
+
 export type OutputFormat = 'json' | 'yaml'
 
 export interface OutputColorOptions {
@@ -46,38 +68,6 @@ export const logVerboseColor = (json: unknown, {
     log(outputColor(json, args))
     return true
   }
-}
-
-export const sauceAuthorization = (user: string, key: string): string => {
-  return Buffer.from(`${ user }:${ key }`, 'binary').toString('base64')
-}
-
-const sauceAPI = (region = ''): string => {
-  const valid = [
-    'us-west-1',
-    'us-east-1',
-    'eu-central-1',
-  ]
-
-  if (!valid.includes(region)) {
-    throw new Error(`Region contains invalid value ("${ region }"), allowed are: ${ valid.join(', ') }`)
-  }
-
-  return `https://api.${ region }.saucelabs.com`
-}
-
-export const sauceStorageAPI = (region = '', suffix = ''): string => {
-  return `${ sauceAPI(region) }/v1/storage/${ suffix }`
-}
-
-export const sauceJobsAPI = (region = '', username = '', suffix = ''): string => {
-  return suffix ?
-    `${ sauceAPI(region) }/rest/v1/${ username }/jobs/${ suffix }` :
-    `${ sauceAPI(region) }/rest/v1/${ username }/jobs`
-}
-
-export const sauceRealDevicesAPI = (region = '', suffix = ''): string => {
-  return `${ sauceAPI(region) }/v1/rdc/${ suffix }`
 }
 
 export const collectValidator = (value: string, previous: string[]): string[] => {
