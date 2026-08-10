@@ -1,10 +1,11 @@
 name: Release
 
-# Manual trigger only: npm org scope + NPM_TOKEN have not been decided/configured
-# yet, so this workflow must not auto-publish on every push to main. Once a
-# scope is chosen and NPM_TOKEN is added as a repo secret, this can be
-# switched to `on: push: branches: [main]` for the standard Changesets flow
-# (see https://github.com/changesets/action#with-publishing).
+# Manual trigger only. Publishing uses npm's OIDC "trusted publisher" flow
+# (id-token: write below, no NPM_TOKEN secret) - that has to be configured on
+# npm's side first (npmjs.com package settings -> Trusted Publisher, pointing
+# at this repo + this workflow file). Once that's done and the first release
+# has been cut, this can be switched to `on: push: branches: [main]` for the
+# standard Changesets flow (see https://github.com/changesets/action#with-publishing).
 on:
   workflow_dispatch:
 
@@ -32,31 +33,36 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # npm's OIDC trusted-publish exchange needs npm CLI >=11.5.1. Node 22's
+      # bundled npm may be older than that depending on the exact runner
+      # image, so pin it explicitly rather than relying on whatever shipped.
+      - name: Update npm for OIDC trusted publishing
+        run: npm install -g npm@latest
+
       - name: Build
-        run: pnpm -r build
+        run: pnpm -r --filter "./packages/*" build
 
       - name: Create release pull request or publish
         id: changesets
         uses: changesets/action@v1
         with:
-          # TODO: uncomment once the npm org/scope is confirmed and NPM_TOKEN
-          # is configured as a repository secret. Until then, changesets/action
-          # will only open/update the "Version Packages" PR and will NOT
-          # publish to npm (no publish command is wired below).
-          #
           # In a pnpm workspace the publish command must be `pnpm publish -r`
           # (not `npm publish`) so every changed workspace package is published
           # and `workspace:*` protocol ranges are rewritten to real versions.
-          # publish: pnpm publish -r --access public --no-git-checks
+          # No NPM_TOKEN: this relies on npm's OIDC trusted-publisher flow,
+          # authenticated via the `id-token: write` permission below. That
+          # must be configured on npm's side (npmjs.com -> package settings ->
+          # Trusted Publisher -> GitHub Actions -> this repo + workflow file)
+          # before this step will succeed.
+          publish: pnpm publish -r --access public --no-git-checks
           version: pnpm changeset version
           commit: "chore: version packages"
           title: "chore: version packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -41,7 +41,8 @@
     "docs:build": "pnpm --filter site build",
     "docs:serve": "pnpm --filter site serve",
     "changeset": "changeset",
-    "version-packages": "changeset version"
+    "version-packages": "changeset version",
+    "release": "pnpm -r --filter \"./packages/*\" build && changeset publish"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.0",
