@@ -19,6 +19,14 @@ jobs:
   build:
     name: Build site
     runs-on: ubuntu-latest
+    # Job-level `permissions:` fully replaces the workflow-level block above
+    # for this job, it does not merge with it - `configure-pages` needs
+    # `pages: write` (and `id-token: write` for its enablement check), so
+    # both have to be repeated here alongside `contents: read`.
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
