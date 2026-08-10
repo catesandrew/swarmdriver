@@ -1,0 +1,204 @@
+---
+id: cli
+title: CLI
+sidebar_position: 6
+hide_title: true
+---
+
+# CLI
+
+`@caps/cli` ships two kinds of binaries: **proxies** that expose pinned versions
+of the tools swarmdriver already depends on, and a **Sauce Labs REST client**
+for the job and storage APIs you otherwise hit with `curl`.
+
+```bash
+pnpm add -D @caps/cli
+```
+
+| Binary | What it runs |
+|--------|--------------|
+| `swarm-wdio` | `@wdio/cli` — the WebdriverIO test runner |
+| `swarm-appium` | `appium` — the Appium server |
+| `swarm-allure` | `allure-commandline` — Allure report generation |
+| `swarm-jasmine` | `jasmine` — the Jasmine runner |
+| `swarm-sauce` | Sauce Labs REST CLI (`jobs` + `storage`) |
+| `swarm-sauce-storage` | The `storage` subtree, mounted as its own top-level command |
+| `swarm-sauce-connect` | Bash wrapper that starts a Sauce Connect tunnel and waits for readiness |
+
+## Proxies
+
+Each proxy resolves the target package's own `bin` entry and re-executes it with
+node, forwarding argv, stdio and exit status. There is no wrapper behaviour —
+`swarm-wdio` *is* `wdio`.
+
+```bash
+swarm-wdio --version           # 9.30.1
+swarm-appium --version         # 2.19.0
+swarm-allure --version         # 2.43.0
+swarm-wdio run wdio.conf.js --suite smoke
+```
+
+The point is pinning: `@caps/cli` depends on `@wdio/cli@^9`, `appium@^2.11` and
+`allure-commandline@^2.29`, so a project that installs `@caps/cli` gets a
+version set that matches what swarmdriver's generated configs expect, without
+adding four more direct dependencies.
+
+:::caution `swarm-jasmine` needs `jasmine` installed
+
+`jasmine` is a transitive dependency of `@wdio/jasmine-framework` and is **not**
+resolvable under pnpm's strict `node_modules` layout. `swarm-jasmine` exits with
+`Cannot find module 'jasmine'` unless your project also declares `jasmine` as a
+direct dependency. The other three proxies work out of the box.
+
+:::
+
+## `swarm-sauce`
+
+A Commander-based client for the Sauce Labs REST APIs.
+
+```bash
+swarm-sauce --help
+```
+
+```
+Commands:
+  storage|s       Upload and manage app binaries in Sauce Application Storage.
+  jobs|j          Review and edit the metadata on your Sauce test jobs.
+```
+
+### Credentials and global options
+
+Every leaf command accepts the same authentication and output flags. Credentials
+default to environment variables, so in practice you never pass them:
+
+| Option | Default | Notes |
+|--------|---------|-------|
+| `-u, --sauce-username <username>` | `$SAUCE_USERNAME` | Required (via flag or env) |
+| `-k, --sauce-access-key <key>` | `$SAUCE_ACCESS_KEY` | Required (via flag or env) |
+| `--sauce-region <region>` | `us-west-1` | One of `us-west-1`, `us-east-1`, `eu-central-1` |
+| `--output <value>` | `json` | `json` or `yaml` |
+| `--verbose` | `false` | Full response instead of the single default field |
+| `--color` | `false` | ANSI-colour the output |
+| `--silent` | `false` | Suppress output entirely |
+
+Terse by default is deliberate: each command prints one value so it composes in
+a shell pipeline. `--verbose` switches to the full payload.
+
+```bash
+export SAUCE_USERNAME=your-user
+export SAUCE_ACCESS_KEY=your-key
+```
+
+### Jobs
+
+```bash
+swarm-sauce jobs list                    # one job id per line
+swarm-sauce jobs ls --real               # real-device jobs
+swarm-sauce jobs list --limit 10 --verbose --output yaml
+swarm-sauce jobs info <id>               # summary for one job
+swarm-sauce jobs info --real <id>        # real-device summary (device, logs, screenshots)
+swarm-sauce jobs edit <id>               # update a job's metadata
+```
+
+| Command | Arguments | Options |
+|---------|-----------|---------|
+| `jobs list` (alias `ls`) | — | `--real`, `--limit <n>`, `--skip <n>`, `--from <unix-ts>`, `--to <unix-ts>` |
+| `jobs info` | `<id>` | `--real` |
+| `jobs edit` | `<id>` | `--real` |
+
+`--real` switches every jobs command from the virtual-device API to the
+real-device API. The two return different shapes, which is why it is a flag
+rather than an inferred value.
+
+### Storage
+
+```bash
+swarm-sauce storage upload ./build/MyApp.ipa            # prints the new file id
+swarm-sauce storage upload ./build/MyApp.ipa --name MyApp.ipa --description 'nightly'
+swarm-sauce storage download ./MyApp.ipa <fileId>       # <output-path> <fileId>
+swarm-sauce storage info                                # prints expiration_timeout_sec
+```
+
+| Command | Arguments | Options |
+|---------|-----------|---------|
+| `storage upload` | `<route>` — path to the file | `--name <name>`, `--description <text>` |
+| `storage download` | `<route> <fileId>` — output path, then file id | — |
+| `storage info` | — | — |
+
+Note the argument order on `download`: **destination first, file id second.**
+
+Listing and per-file management live one level deeper, under
+`storage files` and `storage groups`:
+
+```bash
+swarm-sauce storage files list                          # file ids
+swarm-sauce storage files ls --kind android --per-page 50 --verbose
+swarm-sauce storage files ls --query MyApp
+swarm-sauce storage files download <fileId>
+swarm-sauce storage files edit <fileId> --description 'release candidate'
+swarm-sauce storage files rm <fileId>
+
+swarm-sauce storage groups list                         # app-group ids
+swarm-sauce storage groups ls --kind ios --verbose
+```
+
+| Command | Arguments | Options |
+|---------|-----------|---------|
+| `storage files list` (alias `ls`) | — | `--id <v>`, `--teamId <v>`, `--orgId <v>`, `--query <v>`, `--kind <android\|ios\|other>`, `--page <n>`, `--per-page <n>` |
+| `storage files download` | `<fileId>` | — |
+| `storage files edit` | `<fileId>` | `--description <text>` |
+| `storage files delete` (alias `rm`) | `<fileId>` | — |
+| `storage groups list` (alias `ls`) | — | `--id <v>`, `--query <v>`, `--kind <android\|ios\|other>`, `--page <n>`, `--per-page <n>` |
+
+`--id`, `--teamId` and `--orgId` are repeatable: pass the flag once per value.
+
+`swarm-sauce-storage` is the same `storage` subtree hoisted to the top level, so
+`swarm-sauce-storage upload ./app.ipa` and
+`swarm-sauce storage upload ./app.ipa` are equivalent.
+
+### Upload, then test
+
+The default terse output makes the two-step flow a one-liner:
+
+```bash
+FILE_ID=$(swarm-sauce storage upload ./build/MyApp.ipa)
+
+IOS_SAUCE_APP="storage:$FILE_ID" \
+WDIO_REMOTE=saucelabs WDIO_SCOPE=app WDIO_DEVICES=ios \
+swarm-wdio run wdio.conf.js
+```
+
+## `swarm-sauce-connect`
+
+A bash wrapper around the Sauce Connect Proxy binary. It requires
+`SAUCE_USERNAME` and `SAUCE_ACCESS_KEY` and exits early with a usage message if
+either is missing. It creates a temp directory, starts the tunnel, and blocks
+until Sauce Connect writes its ready file — so a CI step can start the tunnel
+and be sure it is up before the next step runs.
+
+## Programmatic use
+
+Parts of the command tree are exported, so you can mount them inside your own
+CLI:
+
+```javascript
+import { sauceApp, sauceStorageApp, makeStorageCommand } from '@caps/cli'
+import { list, info, edit } from '@caps/cli/jobs'
+import { upload, download, makeStorageFilesCommand } from '@caps/cli/storage'
+
+sauceApp({ version: '1.2.3' })                 // run the whole `sauce` program
+
+myProgram.addCommand(makeStorageCommand())     // or graft the storage subtree on
+```
+
+| Entry point | Exports |
+|-------------|---------|
+| `@caps/cli` | `sauceApp`, `sauceStorageApp`, `makeStorageCommand` |
+| `@caps/cli/jobs` | `list`, `info`, `edit` and their `*Command` registrars |
+| `@caps/cli/storage` | `upload`, `download`, `info`, `makeStorageFilesCommand`, `makeStorageGroupsCommand`, `sauceStorageFilesApp`, `sauceStorageGroupsApp` |
+
+`makeJobsCommand` and `sauceJobsApp` exist in the source but are not re-exported
+from any entry point yet, so the `jobs` subtree cannot currently be grafted onto
+another program the way `storage` can.
+
+See the [API Reference](./api/) for the full export surface.

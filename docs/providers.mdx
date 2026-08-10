@@ -1,7 +1,7 @@
 ---
 id: providers
 title: Providers
-sidebar_position: 5
+sidebar_position: 8
 hide_title: true
 ---
 
@@ -14,6 +14,9 @@ so `buildWdioConfig()` never has to know which grid it is talking to.
 
 Local execution is not a provider. `WDIO_REMOTE=local` drives Appium/chromedriver
 on your own machine and bypasses the registry entirely.
+
+For where this sits in the wider design, see
+[Architecture](./architecture.mdx#why-the-registry-exists).
 
 ## Registry vs. implementations
 

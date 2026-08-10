@@ -1,0 +1,124 @@
+/**
+ * Landing page layout. Deliberately restrained: no gradient banner, no hero
+ * imagery — the code snippet is the hero. All colours come from Infima
+ * variables so light and dark mode both fall out of the theme.
+ */
+
+.hero {
+  padding: 5rem 0 3rem;
+  border-bottom: 1px solid var(--ifm-toc-border-color);
+}
+
+.heroInner,
+.featureGrid,
+.matrix {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.heroInner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 3rem;
+  align-items: center;
+}
+
+.title {
+  font-size: 3.25rem;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  margin-bottom: 1.25rem;
+}
+
+.subtitle {
+  font-size: 1.125rem;
+  line-height: 1.6;
+  color: var(--ifm-color-emphasis-700);
+  margin-bottom: 2rem;
+  max-width: 34rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.heroCode {
+  min-width: 0;
+  font-size: 0.9rem;
+}
+
+.heroCode :global(.theme-code-block) {
+  margin-bottom: 0;
+}
+
+.section {
+  padding: 3.5rem 0;
+}
+
+.featureGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 2rem 2.5rem;
+}
+
+.featureTitle {
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+  margin-bottom: 0.5rem;
+}
+
+.featureBody {
+  color: var(--ifm-color-emphasis-700);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin-bottom: 0;
+}
+
+.matrix {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 3rem;
+  align-items: center;
+  border-top: 1px solid var(--ifm-toc-border-color);
+  padding-top: 3.5rem;
+}
+
+.matrixTitle {
+  font-size: 1.9rem;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.75rem;
+}
+
+.matrixBody {
+  color: var(--ifm-color-emphasis-700);
+  line-height: 1.6;
+  margin-bottom: 0;
+}
+
+.matrixCode {
+  min-width: 0;
+  font-size: 0.85rem;
+}
+
+.matrixCode :global(.theme-code-block) {
+  margin-bottom: 0;
+}
+
+@media (max-width: 996px) {
+  .hero {
+    padding-top: 3rem;
+  }
+
+  .heroInner,
+  .matrix {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+  }
+
+  .title {
+    font-size: 2.5rem;
+  }
+}

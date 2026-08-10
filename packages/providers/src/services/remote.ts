@@ -85,6 +85,27 @@ interface TestOutcome {
   retries?: unknown
 }
 
+/**
+ * Sauce Labs' three public data center endpoints. `envs.SAUCE_REGION` is also
+ * forwarded to `sauce:options.region`/`@wdio/sauce-service`'s own `region`
+ * option elsewhere, but neither of those affects which server the WebDriver
+ * session itself connects to — that's this `hostname`. Previously hardcoded
+ * to `us-west-1` regardless of `SAUCE_REGION`, so setting e.g.
+ * `SAUCE_REGION=eu-central-1` silently kept connecting to the US endpoint.
+ */
+const SAUCE_HOSTNAMES: Record<string, string> = {
+  'us-west-1': 'ondemand.us-west-1.saucelabs.com',
+  'eu-central-1': 'ondemand.eu-central-1.saucelabs.com',
+  'apac-southeast-1': 'ondemand.apac-southeast-1.saucelabs.com',
+}
+
+const DEFAULT_SAUCE_REGION = 'us-west-1'
+
+const buildSauceHostname = (envs: SauceSetupOptions['envs'] = {}): string => {
+  const region = envs?.SAUCE_REGION || DEFAULT_SAUCE_REGION
+  return SAUCE_HOSTNAMES[region] || SAUCE_HOSTNAMES[DEFAULT_SAUCE_REGION]
+}
+
 const init = ({
   envs,
   ...params
@@ -184,7 +205,7 @@ export const setupSauceNative = ({
 }: SauceSetupOptions = {}): WdioConfig => {
   const baseConfig = init({
     envs,
-    hostname: 'ondemand.us-west-1.saucelabs.com',
+    hostname: buildSauceHostname(envs),
     port: 443,
     ...params,
   })
@@ -310,7 +331,7 @@ export const setupSauceBrowser = ({
 }: SauceSetupOptions = {}): WdioConfig => {
   const baseConfig = init({
     envs,
-    hostname: 'ondemand.us-west-1.saucelabs.com',
+    hostname: buildSauceHostname(envs),
     port: 443,
     ...params,
   })

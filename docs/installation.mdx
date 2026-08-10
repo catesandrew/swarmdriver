@@ -7,24 +7,18 @@ sidebar_position: 2
 ```mdx-code-block
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
-import CodeBlock from '@theme/CodeBlock';
 ```
 
 ## Packages
 
-Swarmdriver ships as several packages under the `@caps` scope rather than one
-`swarmdriver` package. Install only what you need:
+Swarmdriver ships as four packages under the `@caps` scope. Install what you use.
 
-| Package | What it is | Needed when |
-|---------|------------|-------------|
+| Package | What it is | Install it when |
+|---------|------------|-----------------|
 | `@caps/core` | `buildWdioConfig()`, the config matrix, helpers, and the provider registry | Always |
-| `@caps/providers` | Cloud-grid provider implementations (Sauce Labs) | Running against a cloud grid |
-| `@caps/reporters` | WebdriverIO reporters (spec, junit, ReportPortal, Sauce comments) | Customising reporters directly |
-| `@caps/cli` | `swarm-*` CLI tools and pinned `wdio`/`appium`/`allure` proxies | Using the CLI tooling |
-
-## Installation
-
-For local-only runs, `@caps/core` is enough:
+| `@caps/providers` | Cloud-grid implementations (Sauce Labs) | Running anything against a cloud grid |
+| `@caps/reporters` | WebdriverIO reporters: spec, junit, ReportPortal, Sauce job comments | Wiring reporters yourself (`@caps/core` already pulls this in) |
+| `@caps/cli` | `swarm-*` binaries: Sauce REST CLI plus pinned `wdio`/`appium`/`allure` proxies | Using the [CLI tooling](./cli.mdx) |
 
 <Tabs
   groupId="pkg-manager"
@@ -38,7 +32,8 @@ For local-only runs, `@caps/core` is enough:
   <TabItem value="pnpm">
 
 ```shell
-pnpm add -D @caps/core
+pnpm add -D @caps/core                    # local only
+pnpm add -D @caps/core @caps/providers    # + cloud grids
 ```
 
   </TabItem>
@@ -46,47 +41,6 @@ pnpm add -D @caps/core
 
 ```shell
 npm install --save-dev @caps/core
-```
-
-  </TabItem>
-  <TabItem value="yarn">
-
-```shell
-yarn add -D @caps/core
-```
-
-  </TabItem>
-  <TabItem value="bun">
-
-```shell
-bun add --dev @caps/core
-```
-
-  </TabItem>
-
-</Tabs>
-
-To run against Sauce Labs, add `@caps/providers`:
-
-<Tabs
-  groupId="pkg-manager"
-  defaultValue="pnpm"
-  values={[
-    { label: "pnpm", value: "pnpm" },
-    { label: "npm", value: "npm" },
-    { label: "yarn", value: "yarn" },
-    { label: "bun", value: "bun" },
-  ]}>
-  <TabItem value="pnpm">
-
-```shell
-pnpm add -D @caps/core @caps/providers
-```
-
-  </TabItem>
-  <TabItem value="npm">
-
-```shell
 npm install --save-dev @caps/core @caps/providers
 ```
 
@@ -94,6 +48,7 @@ npm install --save-dev @caps/core @caps/providers
   <TabItem value="yarn">
 
 ```shell
+yarn add -D @caps/core
 yarn add -D @caps/core @caps/providers
 ```
 
@@ -101,75 +56,71 @@ yarn add -D @caps/core @caps/providers
   <TabItem value="bun">
 
 ```shell
+bun add --dev @caps/core
 bun add --dev @caps/core @caps/providers
 ```
 
   </TabItem>
-
 </Tabs>
 
 :::warning Upgrading from the single `swarmdriver` package
 
-`@caps/core` ships **no** providers. If you use `remote: 'saucelabs'` you must
-also add a bare side-effect import of `@caps/providers` — otherwise
-`buildWdioConfig()` returns `undefined` with no error. See
-[Quick Setup](#quick-setup) below and the [Providers](./providers.mdx) page.
+`@caps/core` ships **no** providers. If you use `remote: 'saucelabs'`, add a bare
+side-effect import of `@caps/providers` — otherwise `buildWdioConfig()` returns
+`undefined` with no error. See [Quick Setup](#quick-setup) and
+[Providers](./providers.mdx).
 
 :::
 
-## Dependencies
+## Requirements
 
-Swarmdriver requires the following peer dependencies to be installed:
+| | Version | Needed for |
+|-|---------|-----------|
+| Node.js | **≥ 20** | Everything (`engines.node` on all packages) |
+| WebdriverIO | **9.x** | Everything |
+| Appium | **2.x** | Native apps and local mobile browsers |
 
-- **WebdriverIO 9.x** — The core test framework
-- **Appium 2.x** — For native mobile app automation
-- **Node.js 16+** — The runtime
+Local mobile testing also needs whatever the platform requires — Android SDK
+plus an AVD, or Xcode plus a simulator runtime. Chromedriver, geckodriver and
+safaridriver are managed by WebdriverIO's own driver services for local desktop
+browsers.
 
-If you plan to run tests locally on mobile devices, you'll also need:
-
-- **Appium** — Can be installed locally or run as a service
-- **Chromedriver** — For Android Chrome browser testing
-- **Simulator/Emulator runtimes** — For iOS/Android emulation
-
-For cloud testing with Sauce Labs:
-
-- No additional setup required — just set `WDIO_REMOTE=saucelabs` and provide credentials
+Cloud runs need no local drivers at all — just `SAUCE_USERNAME` and
+`SAUCE_ACCESS_KEY`.
 
 ## Quick Setup
 
-After installation, create a `wdio.conf.js` in your project root:
+Create `wdio.conf.js` in your project root:
 
 ```javascript
-// Side-effect import: registers the cloud providers (e.g. 'saucelabs') into
-// @caps/core's registry. Omit it and remote: 'saucelabs' resolves to nothing.
-// Safe to keep even for local-only runs.
+// The bare import registers cloud providers (e.g. 'saucelabs') into
+// @caps/core's registry. Required for remote: 'saucelabs'; harmless otherwise.
 import '@caps/providers'
 import { buildWdioConfig } from '@caps/core'
 
-// Build your config from the matrix
-const config = buildWdioConfig({
-  envs: process.env,
-  remote: process.env.WDIO_REMOTE || 'local',
-  scope: process.env.WDIO_SCOPE || 'browser',
-  metal: process.env.WDIO_METAL || 'desktop',
-  framework: 'jasmine',
-})
-
-export default config
+export const config = {
+  ...buildWdioConfig({
+    envs: process.env,
+    remote: process.env.WDIO_REMOTE || 'local',
+    scope: process.env.WDIO_SCOPE || 'browser',
+    metal: process.env.WDIO_METAL || 'desktop',
+    framework: 'jasmine',
+  }),
+  specs: ['./test/specs/**/*.spec.js'],
+}
 ```
 
-Then run tests with:
+`buildWdioConfig()` returns `specs: []` — it builds capabilities and services,
+not a spec glob. Spread the result and add your own.
+
+Then run:
 
 ```bash
-# Local desktop browser testing (default)
-wdio
-
-# Local mobile device browser testing
-WDIO_METAL=device wdio
-
-# Local native app testing
-WDIO_SCOPE=app wdio
-
-# Cloud (Sauce Labs) testing
-WDIO_REMOTE=saucelabs wdio
+wdio run wdio.conf.js                                    # local desktop browsers
+WDIO_METAL=device wdio run wdio.conf.js                  # local mobile browsers
+WDIO_SCOPE=app wdio run wdio.conf.js                     # local native apps
+WDIO_REMOTE=saucelabs wdio run wdio.conf.js              # Sauce Labs
 ```
+
+Next: [Quick Start](./quick-start.mdx) for a first passing test, or
+[Examples](./examples.mdx) for the environment each target needs.

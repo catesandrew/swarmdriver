@@ -1,0 +1,355 @@
+---
+id: examples
+title: Examples
+sidebar_position: 5
+hide_title: true
+---
+
+# Examples
+
+One `wdio.conf.js` covers every target. These examples show the same file used
+six different ways — plus the environment each run needs.
+
+:::info `specs` is always yours
+
+`buildWdioConfig()` returns `specs: []`. It builds capabilities, services,
+reporters and connection details; it does not guess where your tests live.
+Spread the result and add your own:
+
+```js
+export const config = { ...buildWdioConfig({ /* ... */ }), specs: ['./test/specs/**/*.spec.js'] }
+```
+
+Options passed *into* `buildWdioConfig()` that it does not recognise are
+ignored — `specs`, `maxInstances` and friends must be applied on the way out.
+
+:::
+
+## The universal config
+
+Start here. This file is the last one you write; everything after it is
+environment.
+
+```javascript
+// wdio.conf.js
+import '@caps/providers'                    // registers cloud grids; required for WDIO_REMOTE=saucelabs
+import { buildWdioConfig } from '@caps/core'
+
+export const config = {
+  ...buildWdioConfig({
+    envs: process.env,
+    remote: process.env.WDIO_REMOTE || 'local',
+    scope: process.env.WDIO_SCOPE || 'browser',
+    metal: process.env.WDIO_METAL || 'desktop',
+    framework: 'jasmine',
+    pkgName: 'my-e2e-suite',                // seeds Sauce build + tunnel names
+  }),
+  specs: ['./test/specs/**/*.spec.js'],
+}
+```
+
+```bash
+wdio run wdio.conf.js                                   # local Chrome + Safari
+WDIO_METAL=device wdio run wdio.conf.js                 # local Android + iOS browsers
+WDIO_SCOPE=app wdio run wdio.conf.js                    # local native apps
+WDIO_REMOTE=saucelabs wdio run wdio.conf.js             # Sauce desktop browsers
+WDIO_REMOTE=saucelabs WDIO_METAL=device wdio run wdio.conf.js
+WDIO_REMOTE=saucelabs WDIO_SCOPE=app wdio run wdio.conf.js
+```
+
+The rest of this page is the environment for each of those six lines.
+
+---
+
+## 1. Local Chrome, desktop
+
+`remote=local`, `scope=browser`, `metal=desktop` → `setupLocalDesktopBrowsers()`.
+Sessions run against a local driver on `127.0.0.1:4444`.
+
+```bash
+WDIO_REMOTE=local \
+WDIO_SCOPE=browser \
+WDIO_METAL=desktop \
+WDIO_BROWSERS=chrome \
+CHROME_DRIVER_PATH=/opt/homebrew/bin/chromedriver \
+wdio run wdio.conf.js
+```
+
+If you want a fixed base URL for the app under test, compute it in the config —
+`calcBaseUrl()` reads `PORT`/`HOST` first, then `SWARMDRIVER_PORT`/`SWARMDRIVER_HOST`,
+defaulting to `http://0.0.0.0:4000`:
+
+```javascript
+import '@caps/providers'
+import { buildWdioConfig, calcBaseUrl } from '@caps/core'
+
+export const config = {
+  ...buildWdioConfig({ envs: process.env, remote: 'local', scope: 'browser', metal: 'desktop' }),
+  specs: ['./test/specs/**/*.spec.js'],
+  baseUrl: calcBaseUrl({ envs: process.env }),   // HOST=localhost PORT=3000 → http://localhost:3000/
+}
+```
+
+**Multiple browsers in one run.** `WDIO_BROWSERS` is colon-separated, and each
+entry becomes one capability:
+
+```bash
+WDIO_BROWSERS=chrome:safari:firefox wdio run wdio.conf.js    # → 3 capabilities
+```
+
+Only `chrome`, `safari` and `firefox` are recognised. Anything else is dropped
+silently — `chrome:firefox:edge` yields two capabilities, not three.
+
+---
+
+## 2. Local Android emulator, native app
+
+`remote=local`, `scope=app` → `setupLocalNativeApp()`. `metal` is forced to
+`device`. The config wires up the `appium` service and points at
+`127.0.0.1:4723`.
+
+```bash
+WDIO_REMOTE=local \
+WDIO_SCOPE=app \
+WDIO_DEVICES=android \
+ANDROID_APP=$PWD/build/app-debug.apk \
+APP_PACKAGE=com.example.app \
+APP_ACTIVITY=.MainActivity \
+AVD=Pixel_7_API_34 \
+ANDROID_PLATFORM_VERSION=14 \
+wdio run wdio.conf.js
+```
+
+Produces one capability shaped like:
+
+```json
+{
+  "appium:appPackage": "com.example.app",
+  "appium:appActivity": ".MainActivity",
+  "appium:automationName": "UiAutomator2",
+  "platformName": "Android",
+  "appium:platformVersion": "14",
+  "appium:app": "/…/build/app-debug.apk",
+  "appium:language": "en",
+  "appium:locale": "US",
+  "appium:avd": "Pixel_7_API_34",
+  "swarmdriver:testMode": 6
+}
+```
+
+`swarmdriver:testMode` is a vendor-prefixed marker the helpers read to branch on
+platform — `6` is `LOCAL_NATIVE_APP_ANDROID`.
+
+| Variable | Capability | Notes |
+|----------|------------|-------|
+| `ANDROID_APP` | `appium:app` | Path to the `.apk` |
+| `APP_PACKAGE` / `APP_ACTIVITY` | `appium:appPackage` / `appium:appActivity` | Launch target |
+| `AVD` | `appium:avd` | Emulator to boot |
+| `ANDROID_DEVICE_NAME` / `ANDROID_UDID` | `appium:deviceName` / `appium:udid` | For a physical device instead |
+| `ANDROID_PLATFORM_VERSION` | `appium:platformVersion` | |
+| `ANDROID_NO_RESET` / `ANDROID_FULL_RESET` | `appium:noReset` / `appium:fullReset` | Session reset strategy |
+
+---
+
+## 3. Local iOS simulator, native app
+
+Same branch, `WDIO_DEVICES=ios`.
+
+```bash
+WDIO_REMOTE=local \
+WDIO_SCOPE=app \
+WDIO_DEVICES=ios \
+IOS_APP=$PWD/build/Build/Products/Debug-iphonesimulator/MyApp.app \
+BUNDLE_ID=com.example.app \
+IOS_DEVICE_NAME="iPhone 15" \
+IOS_PLATFORM_VERSION=17.4 \
+XCODE_ORG_ID=ABCDE12345 \
+wdio run wdio.conf.js
+```
+
+| Variable | Capability | Notes |
+|----------|------------|-------|
+| `IOS_APP` | `appium:app` | Path to the `.app` / `.ipa` |
+| `BUNDLE_ID` | `appium:bundleId` | Use alone to attach to a preinstalled app |
+| `IOS_DEVICE_NAME` / `IOS_PLATFORM_VERSION` | `appium:deviceName` / `appium:platformVersion` | Simulator selection |
+| `IOS_UDID` | `appium:udid` | For a physical device |
+| `XCODE_ORG_ID` / `XCODE_SIGNING_ID` | WebDriverAgent signing | Required on real devices |
+
+**Both platforms in one run:**
+
+```bash
+WDIO_SCOPE=app WDIO_DEVICES=android:ios \
+ANDROID_APP=$PWD/build/app-debug.apk \
+IOS_APP=$PWD/build/MyApp.app \
+wdio run wdio.conf.js                      # → 2 capabilities
+```
+
+---
+
+## 4. Sauce Labs, desktop browser
+
+`remote=saucelabs`, `scope=browser`, `metal=desktop` →
+`provider.setupDesktopBrowsers()`. Session endpoint is
+`ondemand.us-west-1.saucelabs.com:443`, and `@wdio/sauce-service` is added
+automatically.
+
+:::danger `import '@caps/providers'` is mandatory here
+
+Without it nothing has registered `'saucelabs'` and `buildWdioConfig()` returns
+`undefined` — no error, no warning, just an empty config. Confirm with
+`Object.keys(providers)`; an empty array means the import did not execute. See
+[Architecture](./architecture.mdx#the-consequence-you-must-know-about).
+
+:::
+
+```javascript
+// wdio.conf.js — the bare import must come first
+import '@caps/providers'
+import { buildWdioConfig } from '@caps/core'
+
+export const config = {
+  ...buildWdioConfig({
+    envs: process.env,
+    remote: 'saucelabs',
+    scope: 'browser',
+    metal: 'desktop',
+    framework: 'jasmine',
+    pkgName: 'my-e2e-suite',
+  }),
+  specs: ['./test/specs/**/*.spec.js'],
+}
+```
+
+```bash
+SAUCE_USERNAME=your-user \
+SAUCE_ACCESS_KEY=your-key \
+SAUCE_REGION=us-west-1 \
+WDIO_BROWSERS=chrome:firefox \
+SAUCE_BROWSER_VERSION=latest \
+SAUCE_PLATFORM_NAME="Windows 11" \
+SAUCE_BUILD="ci-${GITHUB_RUN_ID}" \
+wdio run wdio.conf.js
+```
+
+Each browser becomes one capability:
+
+```json
+{
+  "browserName": "chrome",
+  "browserVersion": "latest",
+  "platformName": "Windows 11",
+  "sauce:options": {
+    "build": "2026-08-10T02:17:44Z-my-e2e-suite",
+    "custom-data": {},
+    "tunnelName": "my-e2e-suite-c726d89"
+  },
+  "swarmdriver:testMode": 5
+}
+```
+
+`pkgName` is what seeds `build` and `tunnelName`. Reporters default to
+`spec:junit:saucecomment` on this branch — `saucecomment` writes results back
+onto the Sauce job.
+
+---
+
+## 5. Sauce Labs, real device
+
+Two variants share this branch.
+
+**Native app on a real device** — `scope=app` →
+`provider.setupNativeApp()`. Upload the binary first (see [CLI](./cli.mdx)) and
+reference it with a `storage:` URL:
+
+```bash
+# 1. upload, capture the file id
+FILE_ID=$(swarm-sauce storage upload ./build/MyApp.ipa)
+
+# 2. run
+SAUCE_USERNAME=your-user \
+SAUCE_ACCESS_KEY=your-key \
+WDIO_REMOTE=saucelabs \
+WDIO_SCOPE=app \
+WDIO_DEVICES=android:ios \
+ANDROID_SAUCE_APP='storage:filename=MyApp.apk' \
+ANDROID_SAUCE_DEVICE_NAME='Google Pixel 7' \
+IOS_SAUCE_APP="storage:$FILE_ID" \
+IOS_SAUCE_DEVICE_NAME='iPhone 15' \
+SAUCE_DEVICE_TYPE=phone \
+wdio run wdio.conf.js
+```
+
+**Mobile browser on a real device** — `scope=browser`, `metal=device` →
+`provider.setupDeviceBrowsers()`:
+
+```bash
+SAUCE_USERNAME=your-user \
+SAUCE_ACCESS_KEY=your-key \
+WDIO_REMOTE=saucelabs \
+WDIO_SCOPE=browser \
+WDIO_METAL=device \
+WDIO_DEVICES=android \
+ANDROID_SAUCE_DEVICE_NAME='Google Pixel 7' \
+ANDROID_PLATFORM_VERSION=14 \
+ANDROID_BROWSER_NAME=Chrome \
+wdio run wdio.conf.js
+```
+
+Useful real-device filters, all optional:
+
+| Variable | Effect |
+|----------|--------|
+| `SAUCE_DEVICE_TYPE` | `phone` or `tablet` |
+| `SAUCE_PHONE_ONLY` / `SAUCE_TABLET_ONLY` | Restrict the device pool |
+| `SAUCE_PRIVATE_DEVICES_ONLY` / `SAUCE_PUBLIC_DEVICES_ONLY` | Restrict by ownership |
+| `SAUCE_CARRIER_CONNECTIVITY_ONLY` | Devices on a carrier network |
+| `SAUCE_RESIGNING_ENABLED` | Sauce re-signs the app (default `true`) |
+| `SAUCE_MAX_DURATION` | Job timeout in seconds (default `1800`) |
+
+---
+
+## CI: one job matrix, one config
+
+```yaml
+# .github/workflows/e2e.yml
+jobs:
+  e2e:
+    strategy:
+      matrix:
+        include:
+          - { remote: local,     scope: browser, metal: desktop }
+          - { remote: saucelabs, scope: browser, metal: desktop }
+          - { remote: saucelabs, scope: app,     metal: device  }
+    runs-on: ubuntu-latest
+    env:
+      WDIO_REMOTE: ${{ matrix.remote }}
+      WDIO_SCOPE: ${{ matrix.scope }}
+      WDIO_METAL: ${{ matrix.metal }}
+      SAUCE_USERNAME: ${{ secrets.SAUCE_USERNAME }}
+      SAUCE_ACCESS_KEY: ${{ secrets.SAUCE_ACCESS_KEY }}
+      SAUCE_BUILD: ci-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm wdio run wdio.conf.js
+```
+
+No per-target config files, no branching in the workflow — the matrix rows *are*
+the environment.
+
+## Debugging a run
+
+```bash
+WDIO_LOG_LEVEL=debug wdio run wdio.conf.js          # WebdriverIO's own logger
+SWARMDRIVER_LOG_LEVEL=debug wdio run wdio.conf.js   # swarmdriver's logger
+WDIO_MAX_INSTANCES=1 wdio run wdio.conf.js          # serialise for readable output
+WDIO_OUTPUT_DIR=build/logs wdio run wdio.conf.js    # write driver logs to disk
+```
+
+To see what a config actually resolves to before running it:
+
+```bash
+node -e "import('./wdio.conf.js').then(m => console.dir(m.config, { depth: 4 }))"
+```
+
+If that prints `undefined`, the `@caps/providers` import is missing.

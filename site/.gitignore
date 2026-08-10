@@ -1,0 +1,4 @@
+# Docusaurus build artefacts. `build/` is already covered by the root
+# .gitignore; these are the site-specific caches.
+.docusaurus/
+.cache-loader/

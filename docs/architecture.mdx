@@ -1,0 +1,206 @@
+---
+id: architecture
+title: Architecture
+sidebar_position: 7
+hide_title: true
+---
+
+# Architecture
+
+Two ideas carry the whole design:
+
+1. **One function, six branches.** `buildWdioConfig()` reads three axes and
+   dispatches to exactly one setup function. Nothing else in your repo has to
+   know which target is running.
+2. **Core owns the registry, providers own the implementations.** Cloud grids
+   register themselves into `@caps/core` on import. That one-way dependency is
+   what keeps the packages acyclic.
+
+Everything below is elaboration on those two.
+
+## The config matrix
+
+Three environment variables select one cell:
+
+| Axis | Values | Meaning |
+|------|--------|---------|
+| `WDIO_REMOTE` | `local` \| provider name (`saucelabs`) | Where the WebDriver session runs |
+| `WDIO_SCOPE` | `browser` \| `app` | Web app or native app |
+| `WDIO_METAL` | `desktop` \| `device` | Desktop machine or mobile device/simulator |
+
+`scope=app` forces `metal=device` — you cannot run a native mobile app on a
+desktop. So the matrix is **six** reachable cells, not eight:
+
+| `WDIO_REMOTE` | `WDIO_SCOPE` | `WDIO_METAL` | Function that runs | Session endpoint |
+|---------------|--------------|--------------|--------------------|------------------|
+| `local` | `browser` | `desktop` | `setupLocalDesktopBrowsers()` | `127.0.0.1:4444` (chromedriver/geckodriver/safaridriver) |
+| `local` | `browser` | `device` | `setupLocalDeviceBrowsers()` | `127.0.0.1:4723` (Appium) |
+| `local` | `app` | `device` | `setupLocalNativeApp()` | `127.0.0.1:4723` (Appium) |
+| `saucelabs` | `browser` | `desktop` | `provider.setupDesktopBrowsers()` | `ondemand.us-west-1.saucelabs.com:443` |
+| `saucelabs` | `browser` | `device` | `provider.setupDeviceBrowsers()` | `ondemand.us-west-1.saucelabs.com:443` |
+| `saucelabs` | `app` | `device` | `provider.setupNativeApp()` | `ondemand.us-west-1.saucelabs.com:443` |
+
+Those same six rows are the `MATRIX` constant in
+`packages/integration-tests/src/wdio-config-smoke.js`. Every one of them is run
+through WebdriverIO 9's real `ConfigParser` on every CI run.
+
+### Defaults are injected, never overwritten
+
+Before dispatching, `buildWdioConfig()` fills in whatever the caller left unset.
+It uses the `x || (x = default)` idiom throughout, so an already-set value always
+wins:
+
+| Branch | Defaults applied to `envs` |
+|--------|----------------------------|
+| any `local` | `WDIO_REPORTERS=spec` |
+| `local` + `browser` + `desktop` | `WDIO_BROWSERS=chrome:safari` |
+| `local` + `browser` + `device` | `WDIO_DEVICES=android:ios` |
+| `local` + `app` | `WDIO_DEVICES=android:ios`, `WDIO_METAL=device` |
+| `saucelabs` (all) | `WDIO_REPORTERS=spec:junit:saucecomment`, `SAUCECOMMENT_REPORTER_OUTPUT_DIR=build`, `SAUCECOMMENT_REPORTER_SAVE_OUTPUT_TO_FILE=true` |
+| `saucelabs` + `browser` + `desktop` | `WDIO_BROWSERS=chrome:safari:firefox` |
+| `saucelabs` + `browser` + `device` | `WDIO_DEVICES=android:ios` |
+| `saucelabs` + `app` | `WDIO_DEVICES=android:ios`, `WDIO_METAL=device` |
+
+Note that the cloud defaults come from the **provider**, not from core. That is
+the point of `Provider#applyEnvDefaults()`: `saucecomment` is a Sauce-only
+reporter, so only Sauce gets to ask for it.
+
+### Targets fan out into capabilities
+
+`WDIO_BROWSERS` and `WDIO_DEVICES` are **colon-separated** lists. Each entry
+becomes one capability object in the returned config:
+
+```bash
+WDIO_BROWSERS=chrome:firefox   # → 2 capabilities, 2 parallel sessions
+WDIO_DEVICES=android:ios       # → 2 capabilities
+```
+
+Recognised values are fixed enums, and **unrecognised entries are silently
+dropped**:
+
+- `WDIO_BROWSERS`: `chrome`, `safari`, `firefox`
+- `WDIO_DEVICES`: `android`, `ios`
+
+`WDIO_BROWSERS=chrome:firefox:edge` yields two capabilities, not three.
+
+## Package split
+
+```
+@caps/reporters ──┐
+                  ├──> @caps/core <──── @caps/providers
+@caps/cli ────────┘                     (saucelabs)
+```
+
+| Package | Owns | Depends on |
+|---------|------|------------|
+| `@caps/core` | `buildWdioConfig()`, the three local setup functions, machines, services, helpers, enums, and the **provider registry** | `@caps/reporters` |
+| `@caps/providers` | Cloud-grid **implementations** (Sauce Labs) and their capability builders | `@caps/core`, `@caps/cli`, `@caps/reporters` |
+| `@caps/reporters` | WebdriverIO reporters: spec, junit, ReportPortal, Sauce job comments | — |
+| `@caps/cli` | `swarm-*` binaries: the Sauce REST CLI plus pinned `wdio`/`appium`/`allure` proxies | `@caps/core` |
+
+`packages/integration-tests` is private and unpublished. It is the cross-package
+regression suite, including the WDIO 9 config smoke gate.
+
+### Why the registry exists
+
+`buildWdioConfig()` has to turn the string `'saucelabs'` into a working config.
+The obvious implementation is for core to import the Sauce provider — but the
+Sauce provider needs core's types, enums, services and reducers. That is a
+dependency cycle, and in a pnpm workspace a cycle between two publishable
+packages is a build-order problem you never fully escape.
+
+So the dependency only runs one way:
+
+- **`@caps/core` defines the contract and the registry.** It exports
+  `registerProvider()`, `getProvider()`, `providers` and `DEFAULT_PROVIDER_NAME`
+  — and ships zero implementations.
+- **`@caps/providers` implements the contract and calls `registerProvider()` at
+  module scope.** Importing the package *is* the registration.
+
+```js
+// packages/providers/src/saucelabs/index.ts  (simplified)
+export const saucelabsProvider = { name: 'saucelabs', /* ...five members */ }
+registerProvider(saucelabsProvider.name, saucelabsProvider)
+```
+
+Core never imports providers. Providers import core. No cycle.
+
+### The consequence you must know about
+
+Registration is an **import side effect**. If nothing imports `@caps/providers`,
+nothing has registered `'saucelabs'`, and `buildWdioConfig()` returns
+`undefined` — no throw, no warning.
+
+```js
+import '@caps/providers'                    // ← required for any non-local remote
+import { buildWdioConfig } from '@caps/core'
+```
+
+Verified behaviour without that import:
+
+```js
+import { buildWdioConfig, providers } from '@caps/core'
+
+Object.keys(providers)  // → []
+buildWdioConfig({ remote: 'saucelabs', scope: 'browser', metal: 'desktop' })
+// → undefined
+```
+
+A missing import is indistinguishable from a typo'd provider name — both are
+simply "not registered". `@caps/providers` declares `"sideEffects": true` so
+bundlers do not tree-shake the bare import away.
+
+Full contract details are in [Providers](./providers.mdx).
+
+## Request flow
+
+For `WDIO_REMOTE=saucelabs WDIO_SCOPE=browser WDIO_METAL=desktop`:
+
+1. **Resolve the provider.** `getProvider(envs.WDIO_PROVIDER || remote)`.
+   `WDIO_PROVIDER` wins, so a run can be pointed at a different grid without
+   touching the caller's `remote` argument. Unresolved → return `undefined`.
+2. **Apply provider defaults.** `provider.applyEnvDefaults(envs, { scope, metal })`
+   mutates `envs` in place, filling only what is unset.
+3. **Dispatch.** `scope`/`metal` select one of the provider's three `setup*`
+   functions.
+4. **Build the base config.** Connection details (`hostname`, `port`), framework,
+   reporters, services, log level.
+5. **Reduce over targets.** `WDIO_BROWSERS` / `WDIO_DEVICES` is parsed into a
+   list; each entry appends one W3C capability object, tagged with
+   `swarmdriver:testMode`.
+
+The `local` path is the same minus steps 1 and 2 — it dispatches straight to one
+of core's own `setupLocal*` functions and never touches the registry.
+
+## The WDIO 9 constraint that shapes the output
+
+WebdriverIO 9 treats capabilities as strict W3C. Non-standard, non-prefixed keys
+inside a capability object — `hostname`, `port`, `path`, `protocol`,
+`maxInstances` — are **stripped**. Nothing throws; the session quietly connects
+to `127.0.0.1:4444` and every cloud test fails for a reason that looks nothing
+like the cause.
+
+Every config swarmdriver emits therefore puts connection details at the **top
+level**:
+
+```js
+{
+  hostname: 'ondemand.us-west-1.saucelabs.com',
+  port: 443,
+  capabilities: [
+    { browserName: 'chrome', 'sauce:options': { /* ... */ } },
+  ],
+}
+```
+
+Capability-level keys are either W3C standard or vendor-prefixed
+(`appium:`, `sauce:`, `goog:`, `swarmdriver:`). The
+`packages/integration-tests/test/wdio-config-smoke.test.js` gate runs all six
+matrix cells through WebdriverIO's own config validator and asserts that no bare
+non-W3C key survives inside `capabilities`.
+
+## Where to go next
+
+- [Examples](./examples.mdx) — a real `wdio.conf.js` for each of the six cells
+- [Providers](./providers.mdx) — the five-member `Provider` interface and how to add a grid
+- [API Reference](./api/) — TypeDoc output for every export

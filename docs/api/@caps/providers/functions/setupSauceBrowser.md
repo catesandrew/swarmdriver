@@ -4,7 +4,7 @@
 function setupSauceBrowser(__namedParameters?): WdioConfig;
 ```
 
-Defined in: providers/src/services/remote.ts:306
+Defined in: providers/src/services/remote.ts:327
 
 ## Parameters
 

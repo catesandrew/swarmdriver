@@ -5,61 +5,85 @@ sidebar_position: 1
 hide_title: true
 ---
 
-```mdx-code-block
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import CodeBlock from '@theme/CodeBlock';
+# Swarmdriver
+
+**One `wdio.conf.js` for every target.** Swarmdriver turns three environment
+variables into a valid WebdriverIO 9 + Appium config — local or cloud, browser
+or native app, desktop or device.
+
+## The problem
+
+Most teams testing a web app *and* a mobile app end up with six setup scripts:
+local-chrome, local-android, local-ios, sauce-chrome, sauce-android, sauce-ios.
+Six files that drift apart, five of which are broken at any given moment,
+and a `capabilities` block that has been copy-pasted so many times nobody knows
+which keys still matter.
+
+Swarmdriver replaces all six with one config and a matrix:
+
+```bash
+wdio run wdio.conf.js                                          # local Chrome
+WDIO_METAL=device wdio run wdio.conf.js                        # local Android + iOS browsers
+WDIO_SCOPE=app wdio run wdio.conf.js                           # local native apps
+WDIO_REMOTE=saucelabs wdio run wdio.conf.js                    # Sauce desktop browsers
+WDIO_REMOTE=saucelabs WDIO_METAL=device wdio run wdio.conf.js  # Sauce mobile browsers
+WDIO_REMOTE=saucelabs WDIO_SCOPE=app wdio run wdio.conf.js     # Sauce real devices
 ```
 
-{
-<div>
-  <p align="center">
-    <h1 align="center">Swarmdriver</h1>
-  </p>
+Same file, same specs, same CI job definition. Only the environment changes.
 
-  <p align="center">
-    <a aria-label="GitHub" href="https://github.com/catesandrew/swarmdriver" target="_blank">
-      <img alt="GitHub" src="https://img.shields.io/github/stars/catesandrew/swarmdriver?style=flat-square" />
-    </a>
-    &nbsp;
-    <a aria-label="NPM" href="https://www.npmjs.com/package/swarmdriver" target="_blank">
-      <img alt="NPM Version" src="https://img.shields.io/npm/v/swarmdriver?style=flat-square" />
-    </a>
-  </p>
-</div>
+## The config
+
+```javascript
+// wdio.conf.js
+import '@caps/providers'                    // registers cloud grids (see below)
+import { buildWdioConfig } from '@caps/core'
+
+export const config = {
+  ...buildWdioConfig({
+    envs: process.env,
+    remote: process.env.WDIO_REMOTE || 'local',
+    scope: process.env.WDIO_SCOPE || 'browser',
+    metal: process.env.WDIO_METAL || 'desktop',
+    framework: 'jasmine',
+  }),
+  specs: ['./test/specs/**/*.spec.js'],
 }
+```
 
-**Swarmdriver** is an environment-variable-driven WebdriverIO + Appium test harness for cross-device and cross-simulator mobile and web testing. It provides a curated collection of WebdriverIO packages and configurations that make `wdio.conf.js` manageable and testable across multiple platforms and cloud providers.
+That is the whole integration. `buildWdioConfig()` handles drivers, Appium,
+services, reporters, and W3C-correct capabilities for whichever cell you land in.
 
-## ✨ Key Features
+## The matrix
 
-- **Environment-driven configuration**: Control your entire test matrix through environment variables
-- **Multi-platform support**: Run tests locally or on Sauce Labs (other cloud providers pluggable)
-- **Cross-scope testing**: Browser and native app automation
-- **Cross-device testing**: Desktop and mobile device/simulator testing
-- **Page Object Pattern**: Built-in support for clean test organization
-- **Pre-configured**: Includes everything you need for WebdriverIO + Appium testing
+| Axis | Values | Selects |
+|------|--------|---------|
+| `WDIO_REMOTE` | `local` \| `saucelabs` | Where the session runs |
+| `WDIO_SCOPE` | `browser` \| `app` | Web app or native app |
+| `WDIO_METAL` | `desktop` \| `device` | Desktop machine or mobile device/simulator |
 
-## 🎯 Config Matrix
+`scope=app` implies `metal=device` — you cannot run a native mobile app on a
+desktop — so the matrix has **six** reachable cells. All six are exercised
+against WebdriverIO 9's real config parser on every CI run.
 
-Swarmdriver uses a simple three-axis configuration matrix to define your test environment:
+## One thing that will bite you
 
-| Axis | Options | Purpose |
-|------|---------|---------|
-| **WDIO_REMOTE** | `local` \| `saucelabs` | Where tests run |
-| **WDIO_SCOPE** | `browser` \| `app` | What to test (web or native) |
-| **WDIO_METAL** | `desktop` \| `device` | Physical target (desktop or mobile) |
+Cloud grids live in a separate package and register themselves **on import**:
 
-This creates 8 core configurations, each with sensible defaults for drivers, browsers, and devices.
+```javascript
+import '@caps/providers'                    // ← bare, side-effect import
+import { buildWdioConfig } from '@caps/core'
+```
 
-### ❓ FAQ
+Without it, `buildWdioConfig({ remote: 'saucelabs' })` returns `undefined` — no
+error, no warning. `@caps/core` owns the provider registry but ships no
+implementations, which is what keeps the two packages from depending on each
+other in a cycle. [Architecture](./architecture.mdx) explains the trade-off;
+[Providers](./providers.mdx) has the full contract.
 
-**What's the difference between scope and metal?**
-- `scope` controls *what* you test: a web browser or a native mobile app
-- `metal` controls *where* you test: on a desktop/laptop or on a physical device/simulator
+## Next
 
-**Can I use cloud providers other than Sauce Labs?**
-Yes! Cloud providers are pluggable via a provider interface. Sauce Labs is included as a reference implementation.
-
-**What if I need custom capabilities?**
-You can pass environment variables starting with `WDIO_` to customize WebdriverIO capabilities. See the [Usage](./usage) docs for details.
+- [Installation](./installation.mdx) — packages and peer dependencies
+- [Quick Start](./quick-start.mdx) — first passing test
+- [Examples](./examples.mdx) — a runnable setup for each of the six cells
+- [Architecture](./architecture.mdx) — how the matrix and the registry fit together

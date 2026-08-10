@@ -5,17 +5,16 @@ sidebar_position: 3
 hide_title: true
 ---
 
-## Quick Start
-
 ```mdx-code-block
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
-import CodeBlock from '@theme/CodeBlock';
 ```
 
-Get up and running with Swarmdriver in under 5 minutes.
+# Quick Start
 
-### 1. Install Swarmdriver
+Four steps to a passing local browser test.
+
+## 1. Install
 
 <Tabs
   groupId="pkg-manager"
@@ -28,151 +27,107 @@ Get up and running with Swarmdriver in under 5 minutes.
   <TabItem value="pnpm">
 
 ```bash
-pnpm add -D @caps/core @caps/providers webdriverio appium
+pnpm add -D @caps/core @caps/providers webdriverio
 ```
 
   </TabItem>
   <TabItem value="npm">
 
 ```bash
-npm install --save-dev @caps/core @caps/providers webdriverio appium
+npm install --save-dev @caps/core @caps/providers webdriverio
 ```
 
   </TabItem>
   <TabItem value="yarn">
 
 ```bash
-yarn add -D @caps/core @caps/providers webdriverio appium
+yarn add -D @caps/core @caps/providers webdriverio
 ```
 
   </TabItem>
 </Tabs>
 
 `@caps/core` is the config builder; `@caps/providers` supplies the cloud grids.
-Drop `@caps/providers` if you will only ever run locally.
+Drop `@caps/providers` if you will only ever run locally. Add `appium` when you
+start testing native apps.
 
-### 2. Create Your Configuration
-
-Create `wdio.conf.js`:
+## 2. Create `wdio.conf.js`
 
 ```javascript
-// Registers the cloud providers into @caps/core's registry. This bare import
-// is required for remote: 'saucelabs' — without it buildWdioConfig() returns
+// The bare import registers cloud providers into @caps/core's registry.
+// Required for remote: 'saucelabs' — without it buildWdioConfig() returns
 // undefined instead of a config.
 import '@caps/providers'
 import { buildWdioConfig } from '@caps/core'
 
-const config = buildWdioConfig({
-  envs: process.env,
-  remote: process.env.WDIO_REMOTE || 'local',
-  scope: process.env.WDIO_SCOPE || 'browser',
-  metal: process.env.WDIO_METAL || 'desktop',
-  framework: 'jasmine',
-})
-
-export default config
+export const config = {
+  ...buildWdioConfig({
+    envs: process.env,
+    remote: process.env.WDIO_REMOTE || 'local',
+    scope: process.env.WDIO_SCOPE || 'browser',
+    metal: process.env.WDIO_METAL || 'desktop',
+    framework: 'jasmine',
+  }),
+  specs: ['./test/specs/**/*.spec.js'],
+}
 ```
 
-### 3. Create a Test Spec
+`buildWdioConfig()` returns `specs: []`; the spread-and-override above is how you
+point it at your tests. Options it does not recognise are ignored, so anything
+else you want to change — `baseUrl`, `maxInstances`, hooks — also goes on the
+outer object.
 
-Create `test/example.spec.js`:
+## 3. Write a spec
 
 ```javascript
-describe('Example Test', () => {
-  it('should open Google and verify title', async () => {
-    await browser.url('https://www.google.com')
-    
+// test/specs/example.spec.js
+describe('webdriver.io', () => {
+  it('has the expected title', async () => {
+    await browser.url('https://webdriver.io')
+
     const title = await browser.getTitle()
-    expect(title).toContain('Google')
-  })
-
-  it('should search for swarmdriver', async () => {
-    const searchBox = await $('input[name="q"]')
-    await searchBox.setValue('swarmdriver')
-    await searchBox.keys(['Enter'])
-    
-    await browser.waitUntil(async () => {
-      const results = await $$('a[href*="github.com"]')
-      return results.length > 0
-    })
-
-    const results = await $$('a[href*="github.com"]')
-    expect(results.length).toBeGreaterThan(0)
+    expect(title).toContain('WebdriverIO')
   })
 })
 ```
 
-### 4. Run Your Tests
+## 4. Run
 
 ```bash
-# Desktop browser (Chrome by default, locally)
 wdio run wdio.conf.js
+```
 
-# Mobile device browser
-WDIO_METAL=device wdio run wdio.conf.js
+That is `WDIO_REMOTE=local WDIO_SCOPE=browser WDIO_METAL=desktop` — the default
+cell. It runs Chrome and Safari against a local driver on `127.0.0.1:4444`.
 
-# Cloud testing with Sauce Labs
+Change one variable to change target:
+
+```bash
+WDIO_BROWSERS=chrome wdio run wdio.conf.js              # Chrome only
+WDIO_METAL=device wdio run wdio.conf.js                 # local Android + iOS browsers
+WDIO_SCOPE=app wdio run wdio.conf.js                    # local native apps (needs Appium)
+WDIO_REMOTE=saucelabs wdio run wdio.conf.js             # Sauce Labs desktop browsers
+```
+
+Cloud runs need credentials:
+
+```bash
+SAUCE_USERNAME=your-user SAUCE_ACCESS_KEY=your-key \
 WDIO_REMOTE=saucelabs wdio run wdio.conf.js
-
-# Configure log level
-SWARMDRIVER_LOG_LEVEL=debug wdio run wdio.conf.js
 ```
 
-### 5. (Optional) Use Page Objects
+## If nothing runs
 
-For larger test suites, organize your selectors with the Page Object Pattern:
-
-Create `test/pages/login.page.js`:
-
-```javascript
-class LoginPage {
-  get emailField() {
-    return $('input[type="email"]')
-  }
-
-  get passwordField() {
-    return $('input[type="password"]')
-  }
-
-  get submitButton() {
-    return $('button[type="submit"]')
-  }
-
-  async login(email, password) {
-    await this.emailField.setValue(email)
-    await this.passwordField.setValue(password)
-    await this.submitButton.click()
-  }
-
-  async open(url) {
-    await browser.url(url)
-  }
-}
-
-export default new LoginPage()
+```bash
+node -e "import('./wdio.conf.js').then(m => console.dir(m.config, { depth: 3 }))"
 ```
 
-Then use it in your tests:
+If `capabilities` is missing or the whole config is `undefined`, the
+`import '@caps/providers'` line is missing or was tree-shaken away. That import
+is the only thing that registers `'saucelabs'`.
 
-```javascript
-import LoginPage from '../pages/login.page.js'
+## Next
 
-describe('Login Flow', () => {
-  it('should log in with valid credentials', async () => {
-    await LoginPage.open('https://app.example.com/login')
-    await LoginPage.login('user@example.com', 'password')
-    
-    await browser.waitUntil(async () => {
-      const url = await browser.getUrl()
-      return url.includes('/dashboard')
-    })
-  })
-})
-```
-
-## What's Next?
-
-- Learn about [environment variable configuration](./usage)
-- Explore [API documentation](./api)
-- Set up [Sauce Labs cloud testing](https://saucelabs.com)
-- Review [WebdriverIO best practices](https://webdriver.io/docs/gettingstarted)
+- [Examples](./examples.mdx) — the environment for each of the six matrix cells
+- [Usage](./usage.mdx) — the full environment-variable reference
+- [Architecture](./architecture.mdx) — how the matrix and provider registry work

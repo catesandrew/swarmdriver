@@ -39,9 +39,10 @@ jobs:
 
       # Build must run before test: the workspace packages consume each other
       # through their published `exports` (`dist/`), so an unbuilt dependency
-      # makes the cross-package tests fail to resolve.
+      # makes the cross-package tests fail to resolve. Scoped to packages/* so
+      # this job doesn't also build the docs site (that's docs.yml's job).
       - name: Build
-        run: pnpm -r build
+        run: pnpm -r --filter "./packages/*" build
 
       - name: Test
         run: pnpm -r test

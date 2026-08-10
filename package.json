@@ -37,6 +37,9 @@
     "test:watch": "vitest",
     "smoke": "pnpm --filter @caps/integration-tests smoke",
     "build-docs": "typedoc",
+    "docs:dev": "pnpm --filter site start",
+    "docs:build": "pnpm --filter site build",
+    "docs:serve": "pnpm --filter site serve",
     "changeset": "changeset",
     "version-packages": "changeset version"
   },

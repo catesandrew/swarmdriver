@@ -1,0 +1,29 @@
+/**
+ * Global theme overrides. Docusaurus already ships a solid dark mode; this file
+ * only shifts the accent colour off the default green and tightens the code
+ * block typography so the config snippet on the landing page reads cleanly.
+ */
+
+:root {
+  --ifm-color-primary: #2f6feb;
+  --ifm-color-primary-dark: #2a64d4;
+  --ifm-color-primary-darker: #285ec8;
+  --ifm-color-primary-darkest: #214ea5;
+  --ifm-color-primary-light: #467eee;
+  --ifm-color-primary-lighter: #5286ef;
+  --ifm-color-primary-lightest: #79a1f3;
+  --ifm-code-font-size: 93%;
+  --docusaurus-highlighted-code-line-bg: rgb(0 0 0 / 10%);
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #7aa2f7;
+  --ifm-color-primary-dark: #5b8bf5;
+  --ifm-color-primary-darker: #4c80f4;
+  --ifm-color-primary-darkest: #1e60f0;
+  --ifm-color-primary-light: #99b9f9;
+  --ifm-color-primary-lighter: #a8c4fa;
+  --ifm-color-primary-lightest: #d5e2fd;
+  --ifm-background-color: #0d1117;
+  --docusaurus-highlighted-code-line-bg: rgb(0 0 0 / 30%);
+}

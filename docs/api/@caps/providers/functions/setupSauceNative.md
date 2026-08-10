@@ -4,7 +4,7 @@
 function setupSauceNative(__namedParameters?): WdioConfig;
 ```
 
-Defined in: providers/src/services/remote.ts:180
+Defined in: providers/src/services/remote.ts:201
 
 ## Parameters
 
