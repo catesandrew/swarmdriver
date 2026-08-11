@@ -4,5 +4,5 @@
     "outDir": "dist/types"
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["src/**/*.test.ts", "node_modules", "dist"]
+  "exclude": ["src/**/*.test.ts", "src/**/__test-helpers__/**", "node_modules", "dist"]
 }

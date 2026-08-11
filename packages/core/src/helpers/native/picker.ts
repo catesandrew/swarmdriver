@@ -1,4 +1,5 @@
 import {
+  assertEle,
   findEle,
   // findEleAndSel,
 } from './utils'
@@ -18,37 +19,34 @@ const SELECTORS = {
 /**
  * Set the value for Android
  *
- * @param {string} value
- *
  * @private
  */
-const setAndroidValue = async (value) => {
+const setAndroidValue = async (value: string) => {
   log.info('set android picker value', {
     value,
   })
 
-  const listViewEl = await findEle(`${ SELECTORS.ANDROID_LISTVIEW }/*[@text='${ value }']`)
+  const selector = `${ SELECTORS.ANDROID_LISTVIEW }/*[@text='${ value }']`
+  const listViewEl = await findEle(selector)
 
-  return listViewEl.click()
+  return assertEle(listViewEl, selector).click()
 }
 
 /**
  * Set the value for IOS
  *
- * @param {string} value
- *
  * @private
  */
-const setIosValue = async (value) => {
+const setIosValue = async (value: string) => {
   log.info('set ios picker value', {
     value,
   })
 
   const pickerWheelEl = await findEle(SELECTORS.IOS_PICKERWHEEL)
   const doneEl = await findEle(SELECTORS.DONE)
-  await pickerWheelEl.addValue(value)
+  await assertEle(pickerWheelEl, SELECTORS.IOS_PICKERWHEEL).addValue(value)
 
-  return doneEl.click()
+  return assertEle(doneEl, SELECTORS.DONE).click()
 }
 
 /**
@@ -67,7 +65,7 @@ export const waitForPickerIsShown = async (isShown = true) => {
   })
 
   const el = await findEle(selector)
-  return el.waitForExist({
+  return assertEle(el, selector).waitForExist({
     timeout: 11000,
     reverse: !isShown,
   })
@@ -75,10 +73,8 @@ export const waitForPickerIsShown = async (isShown = true) => {
 
 /**
  * Select a value from the picker
- *
- * @param {string} value The value that needs to be selected
  */
-export const selectPickerValue = async (value) => {
+export const selectPickerValue = async (value: string) => {
   log.info('select picker value', {
     value,
   })

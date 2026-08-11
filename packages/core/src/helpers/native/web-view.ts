@@ -27,7 +27,7 @@ export const waitForWebViewContextLoaded = async () => {
 
       return (
         currentContexts.length > 1 &&
-        currentContexts.find((context) =>
+        currentContexts.find((context: string) =>
           context.toLowerCase().includes(ContextRef.props[ContextRef.WEBVIEW].code)
         )
       )
@@ -42,11 +42,10 @@ export const waitForWebViewContextLoaded = async () => {
 }
 
 /**
- * Switch to native or webview context
- *
- * @param {ContextRef} context should be native of webview
+ * Switch to native or webview context. `context` is `ContextRef.NATIVE` or
+ * `ContextRef.WEBVIEW`'s numeric value.
  */
-export const switchToContext = async (context) => {
+export const switchToContext = async (context: number) => {
   // The first context will always be the NATIVE_APP,
   // the second one will always be the WebdriverIO web page
   const currentContexts = await getCurrentContexts()
@@ -54,18 +53,18 @@ export const switchToContext = async (context) => {
 }
 
 /**
- * Finds the WebView Context
- *
- * @param {string} context should be native or webview
+ * Finds the WebView Context. `context` is the enum's string `code`
+ * (`'native'` or `'webview'`) — a different type from {@link switchToContext}'s
+ * numeric `context`.
  */
-export const findWebviewContext = async (context) => {
+export const findWebviewContext = async (context: string) => {
   const currentContexts = await getCurrentContexts()
   if (context === 'native' || currentContexts.length === 1) {
     return 'NATIVE_APP'
   }
 
   return currentContexts.find(
-    (ctx) => ctx !== 'WEBVIEW_chrome' && ctx.toLowerCase().includes(context),
+    (ctx: string) => ctx !== 'WEBVIEW_chrome' && ctx.toLowerCase().includes(context),
   )
 }
 /**

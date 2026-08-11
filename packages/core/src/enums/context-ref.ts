@@ -17,7 +17,7 @@ export const ContextRef = {
       value: 2,
       code: 'webview',
     },
-  }
+  } as Record<number, EnumEntry>
 }
 
 const contextRefHelper = (val: EnumInput, def: number): EnumEntry | undefined => {

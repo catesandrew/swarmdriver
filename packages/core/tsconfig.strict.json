@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noImplicitAny": true
+  },
+  "include": [],
+  "files": ["src/globals.d.ts", "src/types/aria-query.d.ts", "src/helpers/native/find-strategy.ts", "src/helpers/native/utils.ts", "src/helpers/native/base.ts", "src/helpers/native/gestures.ts", "src/helpers/native/picker.ts", "src/helpers/native/carousel.ts", "src/helpers/native/web-view.ts", "src/helpers/native/alert.ts"]
+}

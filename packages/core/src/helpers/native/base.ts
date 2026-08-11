@@ -1,5 +1,6 @@
 import {
   // findEle,
+  assertEle,
   findEleAndSel,
 } from './utils'
 
@@ -81,7 +82,7 @@ export default class Base {
         selector: sel,
       })
 
-      return el.isDisplayed()
+      return assertEle(el, typeof sel === 'string' ? sel : this.selector).isDisplayed()
     } catch (err) {
       log.warn('error in screen is shown', {
         selector: this.selector,

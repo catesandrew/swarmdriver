@@ -180,7 +180,7 @@ const SWIPE_DIRECTION = {
  * @throws {RangeError} Throws a range error if the coordinate values are outside the valid percentage range (0-100).
  * @private
  */
-const getDeviceScreenCoordinates = (screenSize, coordinates) => {
+const getDeviceScreenCoordinates = (screenSize: ScreenRect, coordinates: Point): Point => {
   return {
     x: Math.round(screenSize.width * (coordinates.x / 100)),
     y: Math.round(screenSize.height * (coordinates.y / 100))
@@ -197,7 +197,7 @@ const getDeviceScreenCoordinates = (screenSize, coordinates) => {
  *
  * @private
  */
-const calculateXY = ({ x, y }, percentage) => {
+const calculateXY = ({ x, y }: Point, percentage: number): Point => {
   return {
     x: x * percentage,
     y: y * percentage
@@ -457,15 +457,9 @@ export const scrollToElements = async ({
   // selector,
   distance = 0.5,
   size,
-}: ScrollToElementsOptions = {}) => {
-  // PRE-EXISTING DEFECT, PRESERVED VERBATIM. This `reduce()` has no seed value,
-  // so on the first iteration `promise` is `selectors[0]` — a plain string, not
-  // a promise — and `.then()` on it throws. A `Promise.resolve(false)` seed is
-  // what is missing. Repairing it would change runtime behaviour, which is out
-  // of scope for the TypeScript conversion; the cast keeps the emitted
-  // JavaScript byte-identical while leaving the defect visible.
-  const found = await selectors.reduce((promise: any, selector) => {
-    return promise.then((foundSelector: any) => {
+}: ScrollToElementsOptions = {}): Promise<boolean> => {
+  const found = await selectors.reduce<Promise<string | false>>((promise, selector) => {
+    return promise.then((foundSelector) => {
       if (foundSelector) {
         return foundSelector
       }
@@ -819,7 +813,7 @@ export const scrollToElement = async ({
   selector,
   distance = 0.5,
   size,
-}: ScrollToElementOptions = {}) => {
+}: ScrollToElementOptions = {}): Promise<boolean> => {
   const { el, sel } = await findEleAndSel({
     element,
     selector,
@@ -911,7 +905,7 @@ export const scrollActionDown = async ({
  * @param {Element} draggableElement
  * @param {Element} dropZoneElement
  */
-export const dragAndDrop = async (draggableElement, dropZoneElement) => {
+export const dragAndDrop = async (draggableElement: WdioElement, dropZoneElement: WdioElement) => {
   // Get the dropzone and the draggable element rectangles
   const dropZoneRec = await driver.getElementRect(dropZoneElement.elementId)
   const dragElementRec = await driver.getElementRect(draggableElement.elementId)
@@ -969,7 +963,7 @@ export const dragAndDrop = async (draggableElement, dropZoneElement) => {
  * @param {Element} element
  * @param {string} gesture Possible values are 'zoom' or 'pinch'.
  */
-export const pinchAndZoom = async (element, gesture = 'zoom') => {
+export const pinchAndZoom = async (element: WdioElement, gesture = 'zoom') => {
   const isZoom = gesture.toLowerCase() === 'zoom'
   const { x, y, width, height } = await driver.getElementRect(element.elementId)
   const centerX = x + (width / 2)
@@ -1068,7 +1062,7 @@ export const pinchAndZoom = async (element, gesture = 'zoom') => {
  *
  * @param {Element} element
  */
-export const swipeItemLeft = async (element) => {
+export const swipeItemLeft = async (element: WdioElement) => {
   const { x, y, width, height } = await driver.getElementRect(element.elementId)
   const centerX = x + (width / 2)
   const centerY = y + (height / 2)

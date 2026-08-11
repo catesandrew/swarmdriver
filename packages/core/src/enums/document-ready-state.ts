@@ -22,7 +22,7 @@ export const DocumentReadyState = {
       value: 3,
       code: 'loading',
     },
-  }
+  } as Record<number, EnumEntry>
 }
 
 const docReadyStateHelper = (val: EnumInput, def: number): EnumEntry | undefined => {

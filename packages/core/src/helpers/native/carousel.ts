@@ -25,10 +25,8 @@ export default class Carousel {
   }
 
   /**
-   * Wait for the carousel to be (un)visible
-   *
-   * @param {bool} [reverse=false] - if true it instead waits for the selector
-   * to not match any elements.
+   * Wait for the carousel to be (un)visible. `reverse` waits for the
+   * selector to not match any elements instead.
    */
   async waitForIsDisplayed(reverse = false) {
     const carouselSelectorEl = await $(this.carouselSelector)
@@ -49,10 +47,8 @@ export default class Carousel {
    * else
    *    there are 3 elements and the active card is the middle one
    *
-   * @param {string} nthCard Use 'first' to indicate the first card,
-   *                 else use a different word to indicate the other card
-   *                 like for example 'active'
-   * @returns {String} Returns the text
+   * `nthCard`: use `'first'` to indicate the first card, else use a
+   * different word to indicate the other card, e.g. `'active'`.
    */
   async getCardText(nthCard: string): Promise<string> {
     await this.waitForIsDisplayed()

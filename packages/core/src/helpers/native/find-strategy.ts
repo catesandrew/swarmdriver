@@ -104,11 +104,11 @@ export const defineStrategy = (selector = ''): string => {
   return 'default'
 }
 
-export const findStrategy = (selector = '') => {
+export const findStrategy = (selector = ''): { using: string; value: string } => {
   let using = DEFAULT_STRATEGY
   let value = selector
-  let match,
-      conditions
+  let match: RegExpMatchArray | null | undefined
+  let conditions: string[] | undefined
 
   switch (defineStrategy(selector)) {
     // user has specified locator strategy directly
@@ -240,7 +240,7 @@ export const findStrategy = (selector = '') => {
       }
 
       // eslint-disable-next-line no-case-declarations
-      const PREFIX_NAME = {
+      const PREFIX_NAME: Record<string, string> = {
         '.': 'class',
         '#': 'id'
       }
@@ -276,12 +276,12 @@ export const findStrategy = (selector = '') => {
   }
 }
 
-const createRoleBaseXpathSelector = (role) => {
-  const locatorArr = []
+const createRoleBaseXpathSelector = (role: string): string => {
+  const locatorArr: string[] = []
   roleElements.get(role)?.forEach((value) => {
-    let locator,
-        tagAttribute,
-        tagAttributevalue
+    let locator: string | undefined
+    let tagAttribute: string | undefined
+    let tagAttributevalue: string | undefined
 
     const tagname = value.name
     if (value.attributes instanceof Array) {

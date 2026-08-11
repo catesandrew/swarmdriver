@@ -16,11 +16,13 @@ import {
   isSauceNativeMode,
 } from '../../enums'
 
+import type { EnumInput } from '../../enums'
+
 import {
   findStrategy,
 } from './find-strategy'
 
-import type { WdioElement } from '../../types'
+import type { Point, WdioElement } from '../../types'
 
 const {
   zip,
@@ -121,7 +123,7 @@ const log = buildLogger()
 // - For Youi.tv it is the full name of a Youi.tv class, and will being with
 //   `CYI-`, such as `CYIPushButtonView` for a push button element.
 //   e.g., `$('CYIPushButtonView').click()`
-export const buildSelector = (selector = '') => {
+export const buildSelector = (selector = ''): string => {
   // undefined testID are overwritten as non-breaking space with babel plugins, issue
   // should be fixed in code to not have undefined testIDs
   selector = selector.replace(/undefined/g, ' ')
@@ -227,7 +229,23 @@ export const buildSelector = (selector = '') => {
 //    your tests. Increase their default values to have more elements appear
 //    when finding strategies
 
-export const findEle = async (selector = '') => {
+/**
+ * Throws when `el` is `false`, narrowing it to `WdioElement` otherwise.
+ *
+ * `findEle`/`findEles`/`findEleAndSel` return `false` on a lookup failure
+ * rather than throwing themselves — callers that don't guard the result
+ * already hit a `TypeError` one property access later. This makes that
+ * failure explicit and named instead of an incidental crash.
+ */
+export const assertEle = (el: WdioElement | false, selector?: string): WdioElement => {
+  if (el === false) {
+    throw new Error(`Element not found: ${ selector ?? 'unknown selector' }`)
+  }
+
+  return el
+}
+
+export const findEle = async (selector = ''): Promise<WdioElement | false> => {
   try {
     const builtSelector = buildSelector(selector)
     log.info('finding element', {
@@ -235,7 +253,7 @@ export const findEle = async (selector = '') => {
       builtSelector,
     })
 
-    const el = await $(builtSelector)
+    const el: WdioElement = await $(builtSelector)
     if (!el) {
       log.trace('An element could not be located', {
         selector,
@@ -270,16 +288,19 @@ export const findEle = async (selector = '') => {
 export const findEleAndSel = async ({
   element = null,
   selector,
-}: ElementOrSelector = {}) => {
-  const promise = element ?
+}: ElementOrSelector = {}): Promise<{ el: WdioElement | false; sel: string | false }> => {
+  const promise: Promise<WdioElement | false> = element ?
     Promise.resolve(element) :
     findEle(selector)
 
   return promise
   .then((el) => {
-    const sel = selector ?
-      buildSelector(selector) :
-      el && el.selector
+    let sel: string | false = false
+    if (selector) {
+      sel = buildSelector(selector)
+    } else if (el && typeof el.selector === 'string') {
+      sel = el.selector
+    }
 
     return {
       el,
@@ -288,7 +309,7 @@ export const findEleAndSel = async ({
   })
 }
 
-export const findEles = async (selector) => {
+export const findEles = async (selector: string): Promise<WdioElement[] | false> => {
   try {
     const builtSelector = buildSelector(selector)
     log.info('finding elements', {
@@ -312,7 +333,7 @@ export const findEles = async (selector) => {
       return false
     }
 
-    return els
+    return els as WdioElement[]
   } catch (err) {
     log.warn('findEles caught an exception', {
       selector,
@@ -324,8 +345,8 @@ export const findEles = async (selector) => {
   }
 }
 
-export const prettyPageSource = (beg, end) => {
-  let lines = driver.execute('mobile: source', {
+export const prettyPageSource = (beg?: number, end?: number): string => {
+  let lines: string[] = driver.execute('mobile: source', {
     format: 'xml',
     excludedAttributes: 'visible,label,x,y,width,height,type,index,enabled',
   }).split('\n')
@@ -336,7 +357,7 @@ export const prettyPageSource = (beg, end) => {
     end = lines.length
   }
   lines = lines.slice(beg, end)
-  const min = Math.min(...lines.map((line) => {
+  const min = Math.min(...lines.map((line: string) => {
     const matches = line.match(/(^[\s]+)/g)
     if (matches && matches.length) {
       return matches[0].length
@@ -344,7 +365,7 @@ export const prettyPageSource = (beg, end) => {
     return 0
   }))
 
-  return lines.map((line) => line.substring(min)).join('\n')
+  return lines.map((line: string) => line.substring(min)).join('\n')
 }
 
 /**
@@ -354,7 +375,7 @@ export const prettyPageSource = (beg, end) => {
  * @param {string} bundleId - App ID (package ID for Android, bundle ID for iOS)
  * @returns {string} Returns thea app id or bundle id
  */
-const findBundleIdHelper = (bundleId) => {
+const findBundleIdHelper = (bundleId?: string): string => {
   if (bundleId) {
     return bundleId
   }
@@ -374,7 +395,7 @@ const findBundleIdHelper = (bundleId) => {
  *
  * @param {string} bundleId - App ID (package ID for Android, bundle ID for iOS)
  */
-const terminateAppHelper = async (bundleId) => {
+const terminateAppHelper = async (bundleId: string) => {
   if (driver.isIOS) {
     log.info('terminate iOS app', {
       bundleId,
@@ -392,7 +413,7 @@ const terminateAppHelper = async (bundleId) => {
   return driver.terminateApp(bundleId)
 }
 
-const activateAppHelper = async (bundleId) => {
+const activateAppHelper = async (bundleId: string) => {
   if (driver.isIOS) {
     log.info('activate iOS app', {
       bundleId,
@@ -408,7 +429,7 @@ const activateAppHelper = async (bundleId) => {
   })
 
   return driver.activateApp(bundleId)
-  .then((result) => {
+  .then((result: unknown) => {
     // android on saucelabs starts in landscape after activation
     if (isSauceNativeMode(driver.WDIO_TEST_IT_MODE)) {
       return driver.setOrientation('PORTRAIT')
@@ -430,7 +451,7 @@ const activateAppHelper = async (bundleId) => {
 export const getAppState = async (bundleId?: string) => {
   bundleId = findBundleIdHelper(bundleId)
 
-  let promise
+  let promise: Promise<EnumInput>
   if (driver.isIOS) {
     log.info('get ios app state with bundle id', {
       bundleId,
@@ -447,7 +468,7 @@ export const getAppState = async (bundleId?: string) => {
     promise = driver.queryAppState(bundleId)
   }
 
-  return promise.then((currentAppState) => {
+  return promise.then((currentAppState: EnumInput) => {
     const appState = parseAppiumAppState(currentAppState)
     log.debug(appState.desc, {
       bundleId,
@@ -457,7 +478,7 @@ export const getAppState = async (bundleId?: string) => {
     })
 
     return appState.value
-  }, (err) => {
+  }, (err: Error) => {
     log.warn('error in looking up app state', {
       bundleId,
       name: err.name,
@@ -475,7 +496,7 @@ export const getAppState = async (bundleId?: string) => {
  * the app needs to be reset
  * @param {string} bundleId - App ID (package ID for Android, bundle ID for iOS)
  */
-export const restartApp = async (bundleId) => {
+export const restartApp = async (bundleId: string) => {
   bundleId = findBundleIdHelper(bundleId)
   const message = driver.firstAppStart ?
     'First run and no restart required' :
@@ -507,7 +528,7 @@ export const restartApp = async (bundleId) => {
  * @param {string} appActivity - The Android activity (optional, required for Android).
  * @returns {Promise<void>} A Promise that resolves when the app is successfully started.
  */
-export const startApp = async (bundleId, appActivity) => {
+export const startApp = async (bundleId: string, appActivity?: string) => {
   bundleId = findBundleIdHelper(bundleId)
 
   if (driver.isIOS) {
@@ -538,23 +559,23 @@ export const startApp = async (bundleId, appActivity) => {
  *
  * @param {string} bundleId - App ID (package ID for Android, bundle ID for iOS)
  */
-export const switchToApp = async (bundleId) => {
+export const switchToApp = async (bundleId: string) => {
   const bid = findBundleIdHelper(bundleId)
   await activateAppHelper(bid)
 }
 
-const getAndroidTextOfElement = async ({ element }) => {
+const getAndroidTextOfElement = async ({ element }: { element: WdioElement }) => {
   const textViews = await element.$$('*//android.widget.TextView')
 
-  return textViews.reduce((promise, el) => {
-    return promise.then((reducer) => {
+  return textViews.reduce((promise: Promise<string>, el: WdioElement) => {
+    return promise.then((reducer: string) => {
       return el.getText()
-      .then((result) => {
+      .then((result: string) => {
         return `${ reducer } ${ result }`
       })
     })
   }, Promise.resolve(''))
-  .then((result) => {
+  .then((result: string) => {
     // fallback
     if (result === '') {
       return element.getText()
@@ -573,15 +594,15 @@ const getIosTextOfElement = async ({
   }
 
   const staticTextEls = await element.$$('*//XCUIElementTypeStaticText')
-  return staticTextEls.reduce((promise, el) => {
-    return promise.then((reducer) => {
+  return staticTextEls.reduce((promise: Promise<string>, el: WdioElement) => {
+    return promise.then((reducer: string) => {
       return el.getText()
-      .then((result) => {
+      .then((result: string) => {
         return `${ reducer } ${ result }`
       })
     })
   }, Promise.resolve(''))
-  .then((result) => {
+  .then((result: string) => {
     // fallback
     if (result === '') {
       return element.getText()
@@ -659,7 +680,7 @@ export const getTextOfElements = async ({
     })
 
     return results
-  }, (err) => {
+  }, (err: Error): string[] => {
     log.warn('rejection in text of elements', {
       selectors,
       isXpath,
@@ -673,7 +694,7 @@ export const getTextOfElements = async ({
   })
 }
 
-export const saveScreenshotWithPath = async (screenshotPath) => {
+export const saveScreenshotWithPath = async (screenshotPath: string) => {
   const route = path.join(screenshotPath, generateScreenshotName(), '.png')
   await driver.saveScreenshot(route)
 
@@ -740,7 +761,7 @@ export const browserIsOpened = async () => {
  *
  * @returns {void}
  */
-export const hideSoftKeyboard = async (element) => {
+export const hideSoftKeyboard = async (element: WdioElement) => {
   // The hideKeyboard() is not working on ios devices, so take a different approach
   if (!(await driver.isKeyboardShown())) {
     return
@@ -772,8 +793,8 @@ export const hideSoftKeyboard = async (element) => {
  * @returns {void}
  */
 export const openDeepLinkUrl = async (
-  bundleId,
-  url,
+  bundleId: string,
+  url: string,
   prefix = 'hmma://'
 ) => {
   bundleId = findBundleIdHelper(bundleId)
@@ -848,7 +869,7 @@ export const allowPermissions = async () => {
  *
  * @param {string} adbCommand
  */
-export const androidExecAdbCommand = async (adbCommand) => {
+export const androidExecAdbCommand = async (adbCommand: string) => {
   // exec(`am start -a android.settings.SECURITY_SETTINGS && locksettings set-pin 1234`)
   // exec(`input text 1234 && input keyevent 66`)
   // exec('am start -a android.settings.SECURITY_SETTINGS')
@@ -868,7 +889,7 @@ export const androidExecAdbCommand = async (adbCommand) => {
  *
  * @returns WebdriverIO.Element
  */
-export const androidFindElementByText = async (string) => {
+export const androidFindElementByText = async (string: string) => {
   return $(`android=new UiSelector().textContains("${ string }")`)
 }
 
@@ -877,7 +898,7 @@ export const androidFindElementByText = async (string) => {
  *
  * @param {string} string
  */
-export const androidWaitAndClick = async (string) => {
+export const androidWaitAndClick = async (string: string) => {
   await (await androidFindElementByText(string)).waitForDisplayed()
   await (await androidFindElementByText(string)).click()
 }
@@ -1315,7 +1336,8 @@ export const tapElement = async ({
     selector: sel,
   })
 
-  const elRect = await driver.getElementRect(el.elementId)
+  const validEl = assertEle(el, typeof sel === 'string' ? sel : selector)
+  const elRect = await driver.getElementRect(validEl.elementId)
   // console.log(`convert ${ route } -strokewidth 0 -fill "rgba( 255, 215, 0 , 0.5 )" -draw "rectangle ${ elRect.x },${ elRect.y } ${ elRect.x + elRect.width },${ elRect.y + elRect.height}" ./build/output.jpg`)
   const point = {
     x: elRect.x + Math.round(elRect.width * xPct),
@@ -1323,7 +1345,7 @@ export const tapElement = async ({
   }
 
   return tapAtPoint({
-    element: el,
+    element: validEl,
     ...point
   })
 }
@@ -1336,7 +1358,7 @@ export const tapAllAroundElement = async ({
   timeoutMsg = '',
   check = () => {}
 }: TapAllAroundElementOptions = {}) => {
-  const xyPcts = [
+  const xyPcts: Point[] = [
     // [ 0.6, 0.5 ], [ 0.5, 0.4 ], [ 0.4, 0.5 ], [ 0.5, 0.6 ],
     // [ 0.7, 0.5 ], [ 0.5, 0.3 ], [ 0.3, 0.5 ], [ 0.5, 0.7 ],
     // [ 0.8, 0.5 ], [ 0.5, 0.2 ], [ 0.3, 0.5 ], [ 0.5, 0.8 ],
@@ -1404,7 +1426,7 @@ export const captureDebug = async ({
     // safariConsole: Safari Console Logs - data written to the JS console in Safari
     // safariNetwork: Safari Network Logs - information about network operations undertaken by Safari
     const entries = await driver.getLogs('server')
-    entries.forEach((entry) => {
+    entries.forEach((entry: { timestamp: number | string; message: string }) => {
       log.info(`${ new Date(entry.timestamp) } ${ entry.message }`)
     })
   }
@@ -1467,7 +1489,7 @@ export const enterStringOnKeyboard = async (string = '') => {
   }])
 }
 
-export const enterCharOnKeyboard = async (char) => {
+export const enterCharOnKeyboard = async (char: string) => {
   // http://appium.io/docs/en/commands/interactions/actions/
   return driver.performActions([{
     type: 'key',

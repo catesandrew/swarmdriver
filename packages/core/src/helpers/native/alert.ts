@@ -39,10 +39,8 @@ export const waitForNativeAlertIsShown = async (reverse = false) => {
  * ANDROID:
  *  Use the text of the button, provide a string and it will automatically transform it to uppercase
  *  and click on the button
- *
- * @param {string} selector
  */
-export const pressNativeAlertButton = async (selector) => {
+export const pressNativeAlertButton = async (selector: string) => {
   const buttonSelector = driver.isAndroid ?
     SELECTORS.ANDROID.ALERT_BUTTON.replace(/{BUTTON_TEXT}/, selector.toUpperCase()) :
     `~${ selector }`
