@@ -114,9 +114,10 @@ public actions or were dead/broken code).
 - sauce-labs-cli specifically: one live smoke test against the real Sauce
   Labs API (bad-credentials 401) to prove the transport/auth layer, since no
   real credentials were available to verify 2xx payload shapes.
-- Not verified anywhere: real npm publish (no package has been published),
-  and none of the actionforge GitHub Actions have run inside a real GitHub
-  Actions workflow yet — only local bundle-execution smoke tests against
+- Update: real npm publish now verified for 7/8 repos (see "Update" section
+  below) — the one item above that was unverified is resolved.
+- Still not verified anywhere: none of the actionforge GitHub Actions have
+  run inside a real GitHub Actions workflow yet — only local bundle-execution smoke tests against
   stubbed GitHub API responses.
 
 ## Commits
@@ -132,11 +133,70 @@ public actions or were dead/broken code).
 | `fd1ccd2` | datadog-metrics-buffer | feat: initial release of datadog-metrics-buffer | yes |
 | `4c65f3d` | babel-preset-forge | feat: initial release of babel-preset-forge | yes |
 | `cab4919` | forgepack | feat: initial extraction of forgepack | yes |
-| `d21ded6` | sauce-labs-cli | chore: scaffold TypeScript CLI foundation | **no** |
-| `7a47de0` | sauce-labs-cli | feat: repair and modernize the Sauce Labs CLI | **no** |
+| `d21ded6` | sauce-labs-cli | chore: scaffold TypeScript CLI foundation | yes |
+| `7a47de0` | sauce-labs-cli | feat: repair and modernize the Sauce Labs CLI | yes |
 | `62f169c` | cogs | feat(node-pkg): add @cogs/node-pkg | yes |
 | `abf70e7` | cogs | feat(browserslist-config): add @cogs/browserslist-config | yes |
 | `4957341`…`c3dbc75` | actionforge | 9 commits, scaffold through interface reconciliation | yes |
+| `7acd998` | swarmdriver | refactor: move Sauce Jobs REST client into @caps/core | yes |
+| `167a869` | swarmdriver | docs: add initial CHANGELOG.md for the four publishable packages | yes |
+| `d2214cc` | monorepo-toolkit | chore: add Changesets for release management | yes |
+| `e1133ea` | datadog-metrics-buffer | docs: expand fork section with concrete differences | yes |
+| `a0e2c79` | babel-preset-forge | chore: set up changesets and hand-write initial CHANGELOG | yes |
+| `63d1830` | forgepack | chore: set up changesets and initial CHANGELOG | yes |
+| `3900305` | forgepack | fix: publish as @surf/forgepack, npm blocked the unscoped name | yes |
+| `41f1b13` | sauce-labs-cli | chore: set up Changesets and add initial CHANGELOG | yes |
+| `39c5c1f` | cogs | docs(changelog): add initial CHANGELOG.md for node-pkg and browserslist-config | yes |
+| `5105d31` | actionforge | docs: add initial CHANGELOG.md for the 4 publishable packages | yes |
+| `88fa5ac` | actionforge | fix(ci): bump checkout/setup-node/pnpm-action-setup to current majors | yes |
+
+## Update — cleanup + first publish round (same day)
+
+After the initial extraction pass, three more things happened:
+
+1. **Fixed the `@caps/providers` → `@caps/cli` dependency inversion**
+   flagged in `adr/0001-provider-registration-pattern.md`. Split
+   `packages/cli/src/jobs/{edit,info,list}.ts` (each mixed a pure REST-call
+   function with a Commander command registrar) — moved the pure REST
+   client + its URL/auth-header helpers into `@caps/core/sauce`, kept the
+   Commander registrars in `@caps/cli` importing from core.
+   `@caps/providers` now depends only on `@caps/core` + `@caps/reporters`,
+   no circular-ish dependency remains. Verified byte-identical HTTP request
+   shapes before/after (stubbed `fetch`, compared URLs/headers/bodies). One
+   real behavior change surfaced along the way: `browser.getJob()`/
+   `updateJob()` (WebdriverIO custom commands) now resolve to the parsed
+   job object instead of a pretty-printed JSON string — documented in
+   `@caps/providers`' new CHANGELOG.md, not treated as breaking (pre-1.0,
+   unreleased). `7acd998`.
+2. **Fixed actionforge's `ci.yml` action-version inconsistency** —
+   `actions/checkout`, `actions/setup-node`, `pnpm/action-setup` bumped from
+   `@v4` to current majors (`@v7`/`@v7`/`@v6`, confirmed via
+   `gh api repos/<owner>/<repo>/releases/latest`), matching what
+   `actions/pnpm` and `actions/yarn` already verified and used. `88fa5ac`.
+3. **Wired Changesets + a real initial CHANGELOG.md into every repo that
+   lacked one** (monorepo-toolkit, babel-preset-forge, forgepack,
+   sauce-labs-cli, cogs's 2 new packages, actionforge's 4 libraries,
+   swarmdriver's 4 packages) — hand-written, not `changeset version`-
+   generated, since none of these had ever been published (nothing to diff
+   a version bump from). Versions left as-is everywhere.
+
+Then the user did the **first public npm publish round manually**
+(`npm login` + `npm publish`/`pnpm publish`, per their own choice to do this
+step themselves before setting up OIDC). Results: swarmdriver, monorepo-toolkit,
+babel-preset-forge, and sauce-labs-cli published cleanly on the first try.
+`forgepack` failed with a 403 — npm's name-similarity anti-squatting check
+blocked the unscoped name `forgepack` as "too similar to existing package
+`forge-pack`" (an unrelated Solidity/blockchain tool). Fixed by rescoping to
+`@surf/forgepack` (one of the user's own available npm scopes) — see
+LESSONS.md, this can't be checked in advance via `npm view`, only discovered
+at actual publish time. Retried and published clean. `actionforge` also
+initially failed — the user didn't already own the `actionforge` npm org
+scope — resolved by claiming it, then all 4 `@actionforge/*` libraries
+published. `cogs`'s 2 new packages published without issue. `3900305`
+(forgepack rescope fix).
+
+**Final state: 7 of 8 repos published to npm.** `datadog-metrics-buffer`
+remains deliberately unpublished pending the fork-of-existing-OSS decision.
 
 ## Out of scope / deferred
 

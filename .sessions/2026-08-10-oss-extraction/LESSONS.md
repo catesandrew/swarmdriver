@@ -111,6 +111,30 @@ next agent-team session gets approached.
 - **Evidence:** actionforge eslint-action and jest-action reports; syncpack
   and yarn/pnpm action version checks via `gh release list`.
 
+## npm blocks unscoped package names for being too *similar* to an existing name, not just exact collisions — and it can't be checked in advance
+
+- **What happened:** `forgepack`'s npm name had been checked via `npm view
+  forgepack` (returned 404, i.e. "available") before extraction even
+  started. At actual `npm publish` time it failed with a 403: "Package name
+  too similar to existing package forge-pack" — an unrelated Solidity/
+  blockchain deployer tool that happens to be spelled with a hyphen where
+  `forgepack` has none.
+- **Why:** npm's anti-squatting heuristic checks *similarity* (edit
+  distance / normalized-form collision), not just exact-name availability.
+  `npm view <name>` and other pre-publish availability checks only catch
+  exact matches; the similarity check only runs server-side at actual
+  publish time, so there is no way to verify a candidate name is safe until
+  someone actually tries to publish it.
+- **How to apply:** Treat a pre-publish `npm view` "available" result as
+  necessary but not sufficient for an unscoped package name. Scoped names
+  (`@you/thing`) sidestep this entirely — npm's similarity check is a
+  top-level-unscoped-namespace concern, so scoping a name is both the
+  fastest fix when this happens *and* a reasonable default to prefer
+  up front for any name with common-word components (compound words like
+  "forgepack" are exactly the shape that collides).
+- **Evidence:** forgepack commit `3900305` (rescoped to `@surf/forgepack`
+  after the 403).
+
 ---
 
 Candidates to promote into long-term memory (if the project has a memory system):
