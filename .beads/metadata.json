@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "swarmdriver",
+  "project_id": "2c59f6ce-a5c0-4dde-a8b1-02cd0bb52096"
+}
